@@ -141,17 +141,16 @@ const UsersManagement = () => {
     },
   });
 
-  // Create user mutation
+  // Create user mutation using edge function (doesn't log out admin)
   const createUserMutation = useMutation({
     mutationFn: async ({ email, password, fullName }: { email: string; password: string; fullName: string }) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-        },
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: { email, password, fullName },
       });
+      
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
       return data;
     },
     onSuccess: () => {
