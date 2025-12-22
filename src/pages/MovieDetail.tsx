@@ -1,0 +1,319 @@
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { 
+  Play, 
+  ArrowLeft, 
+  Calendar, 
+  Clock, 
+  Star,
+  Users,
+  Film,
+  Globe,
+  Tag,
+  ChevronDown,
+  ChevronUp
+} from "lucide-react";
+import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
+
+const MovieDetail = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const [selectedServer, setSelectedServer] = useState(0);
+  const [selectedEpisode, setSelectedEpisode] = useState(0);
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["movie", slug],
+    queryFn: () => fetchMovieDetail(slug!),
+    enabled: !!slug,
+  });
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container py-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 w-48 rounded bg-muted" />
+            <div className="h-64 rounded-lg bg-muted" />
+            <div className="h-4 w-full rounded bg-muted" />
+            <div className="h-4 w-3/4 rounded bg-muted" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error || !data?.movie) {
+    return (
+      <Layout>
+        <div className="container flex min-h-[50vh] flex-col items-center justify-center py-8">
+          <p className="mb-4 text-lg text-muted-foreground">Không tìm thấy phim</p>
+          <Button asChild variant="outline">
+            <Link to="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Về trang chủ
+            </Link>
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const movie = data.movie;
+  const episodes = data.episodes || movie.episodes || [];
+  const currentServer = episodes[selectedServer];
+  const currentEpisode = currentServer?.server_data?.[selectedEpisode];
+
+  return (
+    <Layout>
+      {/* Video Player */}
+      {isPlaying && currentEpisode && (
+        <div className="bg-cinema-dark">
+          <div className="container px-0 sm:px-4">
+            <div className="relative aspect-video w-full bg-black">
+              <iframe
+                src={currentEpisode.link_embed}
+                className="h-full w-full"
+                allowFullScreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hero Banner */}
+      {!isPlaying && (
+        <div className="relative h-[40vh] sm:h-[50vh] overflow-hidden -mt-14 sm:-mt-16">
+          <img
+            src={getThumbUrl(movie.thumb_url || movie.poster_url)}
+            alt={movie.name}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
+        </div>
+      )}
+
+      <div className="container px-4 sm:px-6">
+        {/* Movie Info */}
+        <div className={`relative ${isPlaying ? "pt-6" : "-mt-32 sm:-mt-40"}`}>
+          <div className="flex flex-col gap-6 sm:flex-row">
+            {/* Poster */}
+            <div className="mx-auto w-40 flex-shrink-0 sm:mx-0 sm:w-48">
+              <img
+                src={getPosterUrl(movie.poster_url || movie.thumb_url)}
+                alt={movie.name}
+                className="w-full rounded-lg shadow-lg"
+              />
+            </div>
+
+            {/* Info */}
+            <div className="flex-1">
+              <h1 className="mb-2 text-2xl font-bold text-foreground sm:text-3xl">
+                {movie.name}
+              </h1>
+              <p className="mb-4 text-muted-foreground">{movie.origin_name}</p>
+
+              {/* Badges */}
+              <div className="mb-4 flex flex-wrap gap-2">
+                {movie.quality && (
+                  <span className="rounded bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
+                    {movie.quality}
+                  </span>
+                )}
+                {movie.lang && (
+                  <span className="rounded bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">
+                    {movie.lang}
+                  </span>
+                )}
+                {movie.year && (
+                  <span className="rounded bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                    {movie.year}
+                  </span>
+                )}
+                {movie.episode_current && (
+                  <span className="rounded bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
+                    {movie.episode_current}
+                  </span>
+                )}
+              </div>
+
+              {/* Meta info */}
+              <div className="mb-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                {movie.time && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    {movie.time}
+                  </div>
+                )}
+                {movie.year && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {movie.year}
+                  </div>
+                )}
+                {movie.type && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Film className="h-4 w-4" />
+                    {movie.type === "series" ? "Phim bộ" : "Phim lẻ"}
+                  </div>
+                )}
+              </div>
+
+              {/* Categories */}
+              {movie.category && movie.category.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  {movie.category.map((cat) => (
+                    <span
+                      key={cat.slug}
+                      className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                    >
+                      {cat.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Countries */}
+              {movie.country && movie.country.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  {movie.country.map((c) => (
+                    <span
+                      key={c.slug}
+                      className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                    >
+                      {c.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Watch button */}
+              {episodes.length > 0 && episodes[0]?.server_data?.length > 0 && (
+                <Button
+                  onClick={() => setIsPlaying(true)}
+                  className="gap-2 bg-gradient-primary hover:opacity-90"
+                  size="lg"
+                >
+                  <Play className="h-5 w-5 fill-current" />
+                  Xem Phim
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Content/Description */}
+          {movie.content && (
+            <div className="mt-6 rounded-lg bg-card p-4">
+              <h2 className="mb-3 text-lg font-semibold text-foreground">Nội dung phim</h2>
+              <div
+                className={`text-sm leading-relaxed text-muted-foreground ${
+                  !showFullContent ? "line-clamp-3" : ""
+                }`}
+                dangerouslySetInnerHTML={{ __html: movie.content }}
+              />
+              {movie.content.length > 200 && (
+                <button
+                  onClick={() => setShowFullContent(!showFullContent)}
+                  className="mt-2 flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  {showFullContent ? (
+                    <>
+                      Thu gọn <ChevronUp className="h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Xem thêm <ChevronDown className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Episodes */}
+          {episodes.length > 0 && (
+            <div className="mt-6 rounded-lg bg-card p-4">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">Danh sách tập</h2>
+
+              {/* Server tabs */}
+              {episodes.length > 1 && (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {episodes.map((server, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setSelectedServer(index);
+                        setSelectedEpisode(0);
+                      }}
+                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                        selectedServer === index
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {server.server_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Episode list */}
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+                {currentServer?.server_data?.map((ep, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setSelectedEpisode(index);
+                      setIsPlaying(true);
+                    }}
+                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      selectedEpisode === index && isPlaying
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    {ep.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cast & Crew */}
+          {(movie.actor?.length > 0 || movie.director?.length > 0) && (
+            <div className="mt-6 rounded-lg bg-card p-4">
+              <h2 className="mb-3 text-lg font-semibold text-foreground">Diễn viên & Đạo diễn</h2>
+              
+              {movie.director?.length > 0 && (
+                <div className="mb-3">
+                  <span className="text-sm font-medium text-foreground">Đạo diễn: </span>
+                  <span className="text-sm text-muted-foreground">
+                    {movie.director.join(", ")}
+                  </span>
+                </div>
+              )}
+              
+              {movie.actor?.length > 0 && (
+                <div>
+                  <span className="text-sm font-medium text-foreground">Diễn viên: </span>
+                  <span className="text-sm text-muted-foreground">
+                    {movie.actor.join(", ")}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default MovieDetail;
