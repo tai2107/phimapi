@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -48,6 +49,8 @@ const GenresManagement = () => {
   const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string; seo_title: string | null; seo_description: string | null; seo_keyword: string | null } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: "", slug: "", seo_title: "", seo_description: "", seo_keyword: "" });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: genres, isLoading } = useQuery({
@@ -56,6 +59,7 @@ const GenresManagement = () => {
       const { data, error } = await supabase
         .from("genres")
         .select("*, movie_genres(id)")
+        .is("deleted_at", null)
         .order("name");
       if (error) throw error;
       return data || [];
@@ -93,13 +97,33 @@ const GenresManagement = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("genres").delete().eq("id", id);
+      const { error } = await supabase
+        .from("genres")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-genres"] });
-      toast.success("Đã xóa thể loại thành công");
+      toast.success("Đã chuyển thể loại vào thùng rác");
       setDeleteId(null);
+    },
+    onError: () => toast.error("Không thể xóa thể loại"),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("genres")
+        .update({ deleted_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-genres"] });
+      toast.success(`Đã chuyển ${selectedIds.length} thể loại vào thùng rác`);
+      setSelectedIds([]);
+      setShowBulkDeleteDialog(false);
     },
     onError: () => toast.error("Không thể xóa thể loại"),
   });
@@ -143,6 +167,22 @@ const GenresManagement = () => {
     setIsDialogOpen(true);
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredGenres.map((g) => g.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -180,10 +220,39 @@ const GenresManagement = () => {
               <Badge variant="secondary">{filteredGenres.length} thể loại</Badge>
             </div>
 
+            {selectedIds.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+                <span className="text-sm font-medium">
+                  Đã chọn {selectedIds.length} thể loại
+                </span>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa {selectedIds.length} thể loại
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSelectedIds([])}
+                >
+                  Bỏ chọn
+                </Button>
+              </div>
+            )}
+
             <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={filteredGenres.length > 0 && selectedIds.length === filteredGenres.length}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Tên thể loại</TableHead>
                     <TableHead>Slug</TableHead>
                     <TableHead>Số phim</TableHead>
@@ -195,20 +264,26 @@ const GenresManagement = () => {
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i} className="border-border/50">
-                        {Array.from({ length: 5 }).map((_, j) => (
+                        {Array.from({ length: 6 }).map((_, j) => (
                           <TableCell key={j}><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                         ))}
                       </TableRow>
                     ))
                   ) : filteredGenres.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Không có thể loại nào
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredGenres.map((genre) => (
                       <TableRow key={genre.id} className="border-border/50">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(genre.id)}
+                            onCheckedChange={(checked) => handleSelectOne(genre.id, !!checked)}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{genre.name}</TableCell>
                         <TableCell className="text-muted-foreground">{genre.slug}</TableCell>
                         <TableCell>
@@ -311,7 +386,7 @@ const GenresManagement = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa thể loại này? Hành động này không thể hoàn tác.
+              Thể loại sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại sau.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -321,6 +396,26 @@ const GenresManagement = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa hàng loạt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa {selectedIds.length} thể loại đã chọn? Chúng sẽ được chuyển vào thùng rác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkDeleteMutation.mutate(selectedIds)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Xóa {selectedIds.length} thể loại
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

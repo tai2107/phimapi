@@ -15,7 +15,9 @@ import {
   Tag,
   Clapperboard,
   UserCircle,
-  List
+  List,
+  FileText,
+  Trash2
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +42,7 @@ import {
 
 const mainNavItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Bài viết", url: "/admin/posts", icon: FileText },
 ];
 
 const movieManagementItems = [
@@ -57,6 +60,7 @@ const systemNavItems = [
   { title: "Người dùng", url: "/admin/users", icon: Users },
   { title: "Crawl Phim", url: "/admin/api", icon: Database },
   { title: "Thông báo", url: "/admin/notifications", icon: Bell },
+  { title: "Thùng rác", url: "/admin/trash", icon: Trash2 },
   { title: "Cài đặt", url: "/admin/settings", icon: Settings },
 ];
 

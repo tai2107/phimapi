@@ -21,6 +21,9 @@ import TagsManagement from "./pages/admin/TagsManagement";
 import DirectorsManagement from "./pages/admin/DirectorsManagement";
 import ActorsManagement from "./pages/admin/ActorsManagement";
 import MovieEdit from "./pages/admin/MovieEdit";
+import PostsManagement from "./pages/admin/PostsManagement";
+import PostEdit from "./pages/admin/PostEdit";
+import TrashManagement from "./pages/admin/TrashManagement";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -127,6 +130,30 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <ActorsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/posts"
+              element={
+                <ProtectedAdminRoute>
+                  <PostsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/posts/:id"
+              element={
+                <ProtectedAdminRoute>
+                  <PostEdit />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/trash"
+              element={
+                <ProtectedAdminRoute>
+                  <TrashManagement />
                 </ProtectedAdminRoute>
               }
             />

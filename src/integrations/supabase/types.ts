@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           seo_description: string | null
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           seo_description?: string | null
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           seo_description?: string | null
@@ -50,6 +53,7 @@ export type Database = {
       countries: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           seo_description: string | null
@@ -59,6 +63,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           seo_description?: string | null
@@ -68,6 +73,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           seo_description?: string | null
@@ -114,6 +120,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           seo_description: string | null
@@ -124,6 +131,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           seo_description?: string | null
@@ -134,6 +142,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           seo_description?: string | null
@@ -193,6 +202,7 @@ export type Database = {
       genres: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           seo_description: string | null
@@ -202,6 +212,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           seo_description?: string | null
@@ -211,6 +222,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           seo_description?: string | null
@@ -390,6 +402,7 @@ export type Database = {
           chieurap: boolean
           content: string | null
           created_at: string
+          deleted_at: string | null
           episode_current: string | null
           episode_total: string | null
           id: string
@@ -421,6 +434,7 @@ export type Database = {
           chieurap?: boolean
           content?: string | null
           created_at?: string
+          deleted_at?: string | null
           episode_current?: string | null
           episode_total?: string | null
           id?: string
@@ -452,6 +466,7 @@ export type Database = {
           chieurap?: boolean
           content?: string | null
           created_at?: string
+          deleted_at?: string | null
           episode_current?: string | null
           episode_total?: string | null
           id?: string
@@ -478,6 +493,60 @@ export type Database = {
           view_month?: number
           view_week?: number
           year?: number | null
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          author_id: string | null
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          excerpt: string | null
+          id: string
+          schema_json: string | null
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
+          slug: string
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          excerpt?: string | null
+          id?: string
+          schema_json?: string | null
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          excerpt?: string | null
+          id?: string
+          schema_json?: string | null
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -511,6 +580,7 @@ export type Database = {
       tags: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           seo_description: string | null
@@ -520,6 +590,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           seo_description?: string | null
@@ -529,6 +600,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           seo_description?: string | null
@@ -583,16 +655,19 @@ export type Database = {
       years: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           year: number
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           year: number
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           year?: number
         }

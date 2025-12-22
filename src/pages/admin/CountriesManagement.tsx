@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -48,6 +49,8 @@ const CountriesManagement = () => {
   const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string; seo_title: string | null; seo_description: string | null; seo_keyword: string | null } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: "", slug: "", seo_title: "", seo_description: "", seo_keyword: "" });
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: countries, isLoading } = useQuery({
@@ -56,6 +59,7 @@ const CountriesManagement = () => {
       const { data, error } = await supabase
         .from("countries")
         .select("*, movie_countries(id)")
+        .is("deleted_at", null)
         .order("name");
       if (error) throw error;
       return data || [];
@@ -93,13 +97,33 @@ const CountriesManagement = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("countries").delete().eq("id", id);
+      const { error } = await supabase
+        .from("countries")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-countries"] });
-      toast.success("Đã xóa quốc gia thành công");
+      toast.success("Đã chuyển quốc gia vào thùng rác");
       setDeleteId(null);
+    },
+    onError: () => toast.error("Không thể xóa quốc gia"),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("countries")
+        .update({ deleted_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-countries"] });
+      toast.success(`Đã chuyển ${selectedIds.length} quốc gia vào thùng rác`);
+      setSelectedIds([]);
+      setShowBulkDeleteDialog(false);
     },
     onError: () => toast.error("Không thể xóa quốc gia"),
   });
@@ -143,6 +167,21 @@ const CountriesManagement = () => {
     setIsDialogOpen(true);
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredCountries.map((c) => c.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -181,10 +220,39 @@ const CountriesManagement = () => {
               <Badge variant="secondary">{filteredCountries.length} quốc gia</Badge>
             </div>
 
+            {selectedIds.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+                <span className="text-sm font-medium">
+                  Đã chọn {selectedIds.length} quốc gia
+                </span>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa {selectedIds.length} quốc gia
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSelectedIds([])}
+                >
+                  Bỏ chọn
+                </Button>
+              </div>
+            )}
+
             <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={filteredCountries.length > 0 && selectedIds.length === filteredCountries.length}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Tên quốc gia</TableHead>
                     <TableHead>Slug</TableHead>
                     <TableHead>Số phim</TableHead>
@@ -196,20 +264,26 @@ const CountriesManagement = () => {
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i} className="border-border/50">
-                        {Array.from({ length: 5 }).map((_, j) => (
+                        {Array.from({ length: 6 }).map((_, j) => (
                           <TableCell key={j}><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
                         ))}
                       </TableRow>
                     ))
                   ) : filteredCountries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         Không có quốc gia nào
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredCountries.map((country) => (
                       <TableRow key={country.id} className="border-border/50">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(country.id)}
+                            onCheckedChange={(checked) => handleSelectOne(country.id, !!checked)}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{country.name}</TableCell>
                         <TableCell className="text-muted-foreground">{country.slug}</TableCell>
                         <TableCell>
@@ -312,7 +386,7 @@ const CountriesManagement = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa quốc gia này? Hành động này không thể hoàn tác.
+              Quốc gia sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại sau.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -322,6 +396,26 @@ const CountriesManagement = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa hàng loạt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa {selectedIds.length} quốc gia đã chọn? Chúng sẽ được chuyển vào thùng rác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkDeleteMutation.mutate(selectedIds)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Xóa {selectedIds.length} quốc gia
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
