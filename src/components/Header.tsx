@@ -53,7 +53,7 @@ export function Header() {
   return (
     <>
       <header
-        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 safe-top ${
+        className={`fixed left-0 right-0 top-0 z-[100] transition-all duration-300 safe-top ${
           isScrolled || isMobileMenuOpen
             ? "bg-background/95 backdrop-blur-md shadow-md"
             : "bg-gradient-to-b from-background/80 to-transparent"
@@ -113,7 +113,7 @@ export function Header() {
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 z-[150] bg-popover border border-border shadow-lg">
                   <div className="px-2 py-1.5 text-sm">
                     <p className="font-medium truncate">{user.email?.split("@")[0]}</p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
@@ -156,7 +156,7 @@ export function Header() {
                     <User className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-[150] bg-popover border border-border shadow-lg">
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/admin")}>
                       <Settings className="mr-2 h-4 w-4" />
