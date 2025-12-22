@@ -7,7 +7,7 @@ interface ProtectedAdminRouteProps {
 }
 
 export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, hasAdminAccess, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -24,7 +24,7 @@ export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!isAdmin) {
+  if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -33,7 +33,7 @@ export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
           </div>
           <h1 className="text-2xl font-bold">Không có quyền truy cập</h1>
           <p className="text-muted-foreground max-w-md">
-            Bạn không có quyền admin để truy cập trang này. 
+            Bạn không có quyền để truy cập trang này. 
             Vui lòng liên hệ quản trị viên để được cấp quyền.
           </p>
           <div className="flex gap-4 justify-center pt-4">
