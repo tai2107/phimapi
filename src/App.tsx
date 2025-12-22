@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import MovieDetail from "./pages/MovieDetail";
 import MovieList from "./pages/MovieList";
 import Search from "./pages/Search";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -25,14 +26,20 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Header />
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/phim/:slug" element={<MovieDetail />} />
-          <Route path="/danh-sach/:type" element={<MovieList />} />
-          <Route path="/tim-kiem" element={<Search />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="/admin/*" element={<Admin />} />
+          <Route path="/*" element={
+            <>
+              <Header />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/phim/:slug" element={<MovieDetail />} />
+                <Route path="/danh-sach/:type" element={<MovieList />} />
+                <Route path="/tim-kiem" element={<Search />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </>
+          } />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
