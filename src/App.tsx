@@ -12,6 +12,7 @@ import Search from "./pages/Search";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import ApiCrawl from "./pages/admin/ApiCrawl";
+import UsersManagement from "./pages/admin/UsersManagement";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -46,6 +47,14 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <ApiCrawl />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedAdminRoute>
+                  <UsersManagement />
                 </ProtectedAdminRoute>
               }
             />
