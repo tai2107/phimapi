@@ -425,11 +425,11 @@ const MoviesManagement = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/admin/movies/${movie.id}`)}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 Xem chi tiết
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/admin/movies/${movie.id}`)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Chỉnh sửa
                               </DropdownMenuItem>
