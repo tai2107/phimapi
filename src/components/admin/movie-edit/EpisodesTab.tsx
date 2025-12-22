@@ -38,7 +38,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Save, X, Play, Server } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Plus, Pencil, Trash2, Save, X, Play, Server, Link, ExternalLink, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface EpisodesTabProps {
@@ -59,22 +65,23 @@ interface Episode {
 }
 
 const linkTypes = [
-  { value: "m3u8", label: "M3U8 Stream" },
-  { value: "embed", label: "Embed" },
-  { value: "mp4", label: "MP4" },
-  { value: "shortcode", label: "Shortcode" },
+  { value: "m3u8", label: "M3U8", icon: "🎬" },
+  { value: "embed", label: "Embed", icon: "📺" },
+  { value: "mp4", label: "MP4", icon: "🎥" },
+  { value: "shortcode", label: "Shortcode", icon: "📝" },
 ];
 
 const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) => {
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
+  const [editingField, setEditingField] = useState<"m3u8" | "embed" | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newEpisode, setNewEpisode] = useState({
     name: "",
     slug: "",
     server_name: "Server #1",
-    link_type: "m3u8",
-    link_value: "",
+    link_m3u8: "",
+    link_embed: "",
   });
 
   const queryClient = useQueryClient();
@@ -96,20 +103,14 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
 
   const addMutation = useMutation({
     mutationFn: async (episode: typeof newEpisode) => {
-      const episodeData: any = {
+      const episodeData = {
         movie_id: movieId,
         name: episode.name,
         slug: episode.slug || episode.name.toLowerCase().replace(/\s+/g, "-"),
         server_name: episode.server_name,
+        link_m3u8: episode.link_m3u8 || null,
+        link_embed: episode.link_embed || null,
       };
-
-      if (episode.link_type === "m3u8") {
-        episodeData.link_m3u8 = episode.link_value;
-      } else if (episode.link_type === "embed") {
-        episodeData.link_embed = episode.link_value;
-      } else {
-        episodeData.filename = episode.link_value;
-      }
 
       const { error } = await supabase.from("episodes").insert(episodeData);
       if (error) throw error;
@@ -118,7 +119,7 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
       queryClient.invalidateQueries({ queryKey: ["movie-episodes", movieId] });
       toast.success("Đã thêm tập phim");
       setIsDialogOpen(false);
-      setNewEpisode({ name: "", slug: "", server_name: "Server #1", link_type: "m3u8", link_value: "" });
+      setNewEpisode({ name: "", slug: "", server_name: "Server #1", link_m3u8: "", link_embed: "" });
     },
     onError: () => {
       toast.error("Không thể thêm tập phim");
@@ -145,6 +146,7 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
       queryClient.invalidateQueries({ queryKey: ["movie-episodes", movieId] });
       toast.success("Đã cập nhật tập phim");
       setEditingEpisode(null);
+      setEditingField(null);
     },
     onError: () => {
       toast.error("Không thể cập nhật tập phim");
@@ -166,17 +168,6 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
     },
   });
 
-  const getLinkType = (episode: Episode) => {
-    if (episode.link_m3u8) return "M3U8";
-    if (episode.link_embed) return "Embed";
-    if (episode.filename) return "File";
-    return "N/A";
-  };
-
-  const getLinkValue = (episode: Episode) => {
-    return episode.link_m3u8 || episode.link_embed || episode.filename || "";
-  };
-
   // Group episodes by server
   const groupedEpisodes = episodes?.reduce((acc: Record<string, Episode[]>, episode) => {
     const server = episode.server_name || "Server #1";
@@ -185,13 +176,29 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
     return acc;
   }, {}) || {};
 
+  const truncateUrl = (url: string, maxLength = 50) => {
+    if (!url) return "Chưa có link";
+    if (url.length <= maxLength) return url;
+    return url.substring(0, maxLength) + "...";
+  };
+
+  const handleStartEdit = (episode: Episode, field: "m3u8" | "embed") => {
+    setEditingEpisode({ ...episode });
+    setEditingField(field);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEpisode(null);
+    setEditingField(null);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Danh sách tập phim</CardTitle>
-            <CardDescription>Quản lý các tập phim và link stream</CardDescription>
+            <CardDescription>Quản lý các tập phim và link stream (M3U8 & Embed)</CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -200,7 +207,7 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
                 Thêm tập
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Thêm tập phim mới</DialogTitle>
               </DialogHeader>
@@ -228,33 +235,27 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
                   <Input
                     value={newEpisode.server_name}
                     onChange={(e) => setNewEpisode(prev => ({ ...prev, server_name: e.target.value }))}
-                    placeholder="Server #1"
+                    placeholder="#Hà Nội (Vietsub)"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Loại link</Label>
-                  <Select 
-                    value={newEpisode.link_type} 
-                    onValueChange={(v) => setNewEpisode(prev => ({ ...prev, link_type: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {linkTypes.map(type => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="flex items-center gap-2">
+                    <span className="text-lg">🎬</span> Link M3U8
+                  </Label>
+                  <Input
+                    value={newEpisode.link_m3u8}
+                    onChange={(e) => setNewEpisode(prev => ({ ...prev, link_m3u8: e.target.value }))}
+                    placeholder="https://example.com/video.m3u8"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Link / URL</Label>
+                  <Label className="flex items-center gap-2">
+                    <span className="text-lg">📺</span> Link Embed
+                  </Label>
                   <Input
-                    value={newEpisode.link_value}
-                    onChange={(e) => setNewEpisode(prev => ({ ...prev, link_value: e.target.value }))}
-                    placeholder="https://..."
+                    value={newEpisode.link_embed}
+                    onChange={(e) => setNewEpisode(prev => ({ ...prev, link_embed: e.target.value }))}
+                    placeholder="https://player.example.com/embed/..."
                   />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -296,111 +297,168 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
                     <Table>
                       <TableHeader>
                         <TableRow className="border-border">
-                          <TableHead className="w-[120px]">Tên tập</TableHead>
+                          <TableHead className="w-[100px]">Tên tập</TableHead>
                           <TableHead className="w-[100px]">Slug</TableHead>
-                          <TableHead className="w-[100px]">Type</TableHead>
-                          <TableHead>Link</TableHead>
-                          <TableHead className="w-[100px] text-right">Thao tác</TableHead>
+                          <TableHead>
+                            <span className="flex items-center gap-1">
+                              <span>🎬</span> Link M3U8
+                            </span>
+                          </TableHead>
+                          <TableHead>
+                            <span className="flex items-center gap-1">
+                              <span>📺</span> Link Embed
+                            </span>
+                          </TableHead>
+                          <TableHead className="w-[80px] text-right">Thao tác</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {serverEpisodes.map((episode) => (
                           <TableRow key={episode.id} className="border-border">
-                            {editingEpisode?.id === episode.id ? (
-                              <>
-                                <TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Play className="h-3 w-3 text-primary" />
+                                {episode.name}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {episode.slug}
+                            </TableCell>
+                            
+                            {/* M3U8 Link */}
+                            <TableCell>
+                              {editingEpisode?.id === episode.id && editingField === "m3u8" ? (
+                                <div className="flex items-center gap-1">
                                   <Input
-                                    value={editingEpisode.name}
-                                    onChange={(e) => setEditingEpisode({ ...editingEpisode, name: e.target.value })}
-                                    className="h-8"
+                                    value={editingEpisode.link_m3u8 || ""}
+                                    onChange={(e) => setEditingEpisode({ ...editingEpisode, link_m3u8: e.target.value })}
+                                    className="h-8 text-xs"
+                                    placeholder="https://..."
                                   />
-                                </TableCell>
-                                <TableCell>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => updateMutation.mutate(editingEpisode)}
+                                  >
+                                    <Check className="h-4 w-4 text-green-500" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className="flex items-center gap-1 group cursor-pointer"
+                                        onClick={() => handleStartEdit(episode, "m3u8")}
+                                      >
+                                        {episode.link_m3u8 ? (
+                                          <>
+                                            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                                              M3U8
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                              {truncateUrl(episode.link_m3u8, 30)}
+                                            </span>
+                                            <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground" />
+                                          </>
+                                        ) : (
+                                          <Badge variant="outline" className="text-muted-foreground border-dashed">
+                                            + Thêm M3U8
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </TooltipTrigger>
+                                    {episode.link_m3u8 && (
+                                      <TooltipContent side="top" className="max-w-md">
+                                        <p className="text-xs break-all">{episode.link_m3u8}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </TableCell>
+                            
+                            {/* Embed Link */}
+                            <TableCell>
+                              {editingEpisode?.id === episode.id && editingField === "embed" ? (
+                                <div className="flex items-center gap-1">
                                   <Input
-                                    value={editingEpisode.slug}
-                                    onChange={(e) => setEditingEpisode({ ...editingEpisode, slug: e.target.value })}
-                                    className="h-8"
+                                    value={editingEpisode.link_embed || ""}
+                                    onChange={(e) => setEditingEpisode({ ...editingEpisode, link_embed: e.target.value })}
+                                    className="h-8 text-xs"
+                                    placeholder="https://..."
                                   />
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">{getLinkType(editingEpisode)}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    value={editingEpisode.link_m3u8 || editingEpisode.link_embed || editingEpisode.filename || ""}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      if (editingEpisode.link_m3u8 !== null) {
-                                        setEditingEpisode({ ...editingEpisode, link_m3u8: value });
-                                      } else if (editingEpisode.link_embed !== null) {
-                                        setEditingEpisode({ ...editingEpisode, link_embed: value });
-                                      } else {
-                                        setEditingEpisode({ ...editingEpisode, filename: value });
-                                      }
-                                    }}
-                                    className="h-8"
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex justify-end gap-1">
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8"
-                                      onClick={() => updateMutation.mutate(editingEpisode)}
-                                    >
-                                      <Save className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8"
-                                      onClick={() => setEditingEpisode(null)}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </>
-                            ) : (
-                              <>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Play className="h-3 w-3 text-primary" />
-                                    {episode.name}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                  {episode.slug}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">{getLinkType(episode)}</Badge>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground truncate max-w-[300px]">
-                                  {getLinkValue(episode)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex justify-end gap-1">
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8"
-                                      onClick={() => setEditingEpisode(episode)}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-8 w-8 text-destructive hover:text-destructive"
-                                      onClick={() => setDeleteId(episode.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </>
-                            )}
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => updateMutation.mutate(editingEpisode)}
+                                  >
+                                    <Check className="h-4 w-4 text-green-500" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className="flex items-center gap-1 group cursor-pointer"
+                                        onClick={() => handleStartEdit(episode, "embed")}
+                                      >
+                                        {episode.link_embed ? (
+                                          <>
+                                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">
+                                              Embed
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                              {truncateUrl(episode.link_embed, 30)}
+                                            </span>
+                                            <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground" />
+                                          </>
+                                        ) : (
+                                          <Badge variant="outline" className="text-muted-foreground border-dashed">
+                                            + Thêm Embed
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </TooltipTrigger>
+                                    {episode.link_embed && (
+                                      <TooltipContent side="top" className="max-w-md">
+                                        <p className="text-xs break-all">{episode.link_embed}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </TableCell>
+                            
+                            <TableCell className="text-right">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteId(episode.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -442,7 +500,7 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
         </Button>
         <Button onClick={onSave} disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
-          Hoàn tất
+          {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>
       </div>
     </div>

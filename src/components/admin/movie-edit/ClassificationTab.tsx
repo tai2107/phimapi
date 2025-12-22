@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Save, X } from "lucide-react";
+import { Save, X, Globe } from "lucide-react";
 
 interface ClassificationTabProps {
   formData: any;
@@ -26,6 +26,14 @@ const ClassificationTab = ({ formData, setFormData, onSave, onCancel, isSaving }
     },
   });
 
+  const { data: countries } = useQuery({
+    queryKey: ["countries"],
+    queryFn: async () => {
+      const { data } = await supabase.from("countries").select("*").order("name");
+      return data || [];
+    },
+  });
+
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
@@ -36,6 +44,15 @@ const ClassificationTab = ({ formData, setFormData, onSave, onCancel, isSaving }
       updateField("selectedGenres", currentGenres.filter((id: string) => id !== genreId));
     } else {
       updateField("selectedGenres", [...currentGenres, genreId]);
+    }
+  };
+
+  const toggleCountry = (countryId: string) => {
+    const currentCountries = formData.selectedCountries || [];
+    if (currentCountries.includes(countryId)) {
+      updateField("selectedCountries", currentCountries.filter((id: string) => id !== countryId));
+    } else {
+      updateField("selectedCountries", [...currentCountries, countryId]);
     }
   };
 
@@ -99,6 +116,46 @@ const ClassificationTab = ({ formData, setFormData, onSave, onCancel, isSaving }
                 return genre ? (
                   <Badge key={genreId} variant="secondary">
                     {genre.name}
+                  </Badge>
+                ) : null;
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Countries */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" />
+            Quốc gia
+          </CardTitle>
+          <CardDescription>Chọn quốc gia sản xuất phim</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {countries?.map((country) => (
+              <div key={country.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`country-${country.id}`}
+                  checked={(formData.selectedCountries || []).includes(country.id)}
+                  onCheckedChange={() => toggleCountry(country.id)}
+                />
+                <Label htmlFor={`country-${country.id}`} className="cursor-pointer text-sm">
+                  {country.name}
+                </Label>
+              </div>
+            ))}
+          </div>
+          {(formData.selectedCountries || []).length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="text-sm text-muted-foreground">Đã chọn:</span>
+              {(formData.selectedCountries || []).map((countryId: string) => {
+                const country = countries?.find(c => c.id === countryId);
+                return country ? (
+                  <Badge key={countryId} variant="secondary">
+                    {country.name}
                   </Badge>
                 ) : null;
               })}

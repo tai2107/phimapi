@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -22,25 +20,8 @@ interface OtherTabProps {
 }
 
 const OtherTab = ({ formData, setFormData, onSave, onCancel, isSaving }: OtherTabProps) => {
-  const { data: countries } = useQuery({
-    queryKey: ["countries"],
-    queryFn: async () => {
-      const { data } = await supabase.from("countries").select("*").order("name");
-      return data || [];
-    },
-  });
-
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
-  };
-
-  const toggleCountry = (countryId: string) => {
-    const currentCountries = formData.selectedCountries || [];
-    if (currentCountries.includes(countryId)) {
-      updateField("selectedCountries", currentCountries.filter((id: string) => id !== countryId));
-    } else {
-      updateField("selectedCountries", [...currentCountries, countryId]);
-    }
   };
 
   const statusOptions = [
@@ -75,30 +56,6 @@ const OtherTab = ({ formData, setFormData, onSave, onCancel, isSaving }: OtherTa
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Countries */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quốc gia</CardTitle>
-          <CardDescription>Chọn quốc gia sản xuất phim</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {countries?.map((country) => (
-              <div key={country.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`country-${country.id}`}
-                  checked={(formData.selectedCountries || []).includes(country.id)}
-                  onCheckedChange={() => toggleCountry(country.id)}
-                />
-                <Label htmlFor={`country-${country.id}`} className="cursor-pointer text-sm">
-                  {country.name}
-                </Label>
-              </div>
-            ))}
           </div>
         </CardContent>
       </Card>
