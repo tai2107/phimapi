@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -33,10 +34,10 @@ import {
   FileAudio,
   FileText,
   File,
-  X,
   Grid,
   List,
-  Loader2
+  Loader2,
+  CheckSquare
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -73,6 +74,9 @@ const MediaManagement = () => {
   const [selectedFile, setSelectedFile] = useState<MediaFile | null>(null);
   const [fileToDelete, setFileToDelete] = useState<MediaFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Fetch media files
   const { data: files = [], isLoading } = useQuery({
@@ -136,14 +140,12 @@ const MediaManagement = () => {
       });
     }
 
-    // Reset input
     event.target.value = "";
   };
 
   // Soft delete - move to trash
   const deleteMutation = useMutation({
     mutationFn: async (file: MediaFile) => {
-      // Insert into deleted_media table
       const { error: insertError } = await supabase
         .from("deleted_media")
         .insert({
@@ -156,7 +158,6 @@ const MediaManagement = () => {
       
       if (insertError) throw insertError;
       
-      // Move file to trash folder in storage
       const { error: moveError } = await supabase.storage
         .from("media")
         .move(file.name, `trash/${file.name}`);
@@ -173,6 +174,42 @@ const MediaManagement = () => {
       toast({
         title: "Lỗi",
         description: "Không thể xóa file: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (fileIds: string[]) => {
+      const filesToDelete = files.filter(f => fileIds.includes(f.id));
+      
+      for (const file of filesToDelete) {
+        await supabase
+          .from("deleted_media")
+          .insert({
+            file_name: file.name,
+            file_path: file.name,
+            file_size: file.metadata?.size || 0,
+            mime_type: file.metadata?.mimetype || null,
+            deleted_by: user?.id,
+          });
+        
+        await supabase.storage
+          .from("media")
+          .move(file.name, `trash/${file.name}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media-files"] });
+      toast({ title: `Đã chuyển ${selectedIds.length} file vào thùng rác` });
+      setSelectedIds([]);
+      setShowBulkDeleteDialog(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa: " + error.message,
         variant: "destructive",
       });
     },
@@ -204,6 +241,38 @@ const MediaManagement = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Bulk download
+  const handleBulkDownload = async () => {
+    const filesToDownload = files.filter(f => selectedIds.includes(f.id));
+    setIsDownloading(true);
+    
+    for (const file of filesToDownload) {
+      await downloadFile(file.name);
+      // Small delay to prevent browser blocking
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    setIsDownloading(false);
+    toast({ title: `Đã tải xuống ${filesToDownload.length} file` });
+  };
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredFiles.map(f => f.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(i => i !== id));
+    }
   };
 
   // Filter files
@@ -267,6 +336,57 @@ const MediaManagement = () => {
         </div>
       </div>
 
+      {/* Bulk actions bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+          <CheckSquare className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">
+            Đã chọn {selectedIds.length} file
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Tải xuống
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowBulkDeleteDialog(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Xóa
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+          >
+            Bỏ chọn
+          </Button>
+        </div>
+      )}
+
+      {/* Select all checkbox */}
+      {filteredFiles.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={filteredFiles.length > 0 && selectedIds.length === filteredFiles.length}
+            onCheckedChange={handleSelectAll}
+          />
+          <span className="text-sm text-muted-foreground">
+            Chọn tất cả ({filteredFiles.length} file)
+          </span>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -285,14 +405,30 @@ const MediaManagement = () => {
           {filteredFiles.map((file) => {
             const FileIcon = getFileIcon(file.metadata?.mimetype);
             const publicUrl = getPublicUrl(file.name);
+            const isSelected = selectedIds.includes(file.id);
             
             return (
               <Card
                 key={file.id}
-                className="cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden"
-                onClick={() => setSelectedFile(file)}
+                className={`cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden relative ${
+                  isSelected ? 'ring-2 ring-primary bg-primary/5' : ''
+                }`}
               >
-                <div className="aspect-square relative bg-muted flex items-center justify-center">
+                {/* Checkbox overlay */}
+                <div 
+                  className="absolute top-2 left-2 z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(checked) => handleSelectOne(file.id, !!checked)}
+                    className="bg-background/80 backdrop-blur-sm"
+                  />
+                </div>
+                <div 
+                  className="aspect-square relative bg-muted flex items-center justify-center"
+                  onClick={() => setSelectedFile(file)}
+                >
                   {isImage(file.metadata?.mimetype) ? (
                     <img
                       src={publicUrl}
@@ -304,7 +440,7 @@ const MediaManagement = () => {
                     <FileIcon className="h-12 w-12 text-muted-foreground" />
                   )}
                 </div>
-                <CardContent className="p-2">
+                <CardContent className="p-2" onClick={() => setSelectedFile(file)}>
                   <p className="text-xs truncate" title={file.name}>
                     {file.name}
                   </p>
@@ -322,14 +458,25 @@ const MediaManagement = () => {
             {filteredFiles.map((file) => {
               const FileIcon = getFileIcon(file.metadata?.mimetype);
               const publicUrl = getPublicUrl(file.name);
+              const isSelected = selectedIds.includes(file.id);
               
               return (
                 <div
                   key={file.id}
-                  className="flex items-center gap-4 p-4 hover:bg-muted/50 cursor-pointer"
-                  onClick={() => setSelectedFile(file)}
+                  className={`flex items-center gap-4 p-4 hover:bg-muted/50 cursor-pointer ${
+                    isSelected ? 'bg-primary/5' : ''
+                  }`}
                 >
-                  <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleSelectOne(file.id, !!checked)}
+                    />
+                  </div>
+                  <div 
+                    className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    onClick={() => setSelectedFile(file)}
+                  >
                     {isImage(file.metadata?.mimetype) ? (
                       <img
                         src={publicUrl}
@@ -341,7 +488,7 @@ const MediaManagement = () => {
                       <FileIcon className="h-6 w-6 text-muted-foreground" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0" onClick={() => setSelectedFile(file)}>
                     <p className="truncate font-medium">{file.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {formatFileSize(file.metadata?.size || 0)} •{" "}
@@ -475,7 +622,7 @@ const MediaManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
+      {/* Single delete confirmation dialog */}
       <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -489,6 +636,28 @@ const MediaManagement = () => {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => fileToDelete && deleteMutation.mutate(fileToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Chuyển vào thùng rác
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirmation dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chuyển vào thùng rác</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedIds.length} file sẽ được chuyển vào thùng rác và tự động xóa sau 30 ngày.
+              Bạn có thể khôi phục từ thùng rác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => bulkDeleteMutation.mutate(selectedIds)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Chuyển vào thùng rác
