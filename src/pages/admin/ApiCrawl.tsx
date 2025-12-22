@@ -329,13 +329,14 @@ const ApiCrawl = () => {
         }
       }
 
-      // Process episodes
+      // Process episodes - batch insert for better performance
       if (movieData.episodes && movieData.episodes.length > 0) {
         await supabase.from("episodes").delete().eq("movie_id", movieId);
         
+        const allEpisodes: any[] = [];
         for (const server of movieData.episodes) {
           for (const ep of server.server_data) {
-            await supabase.from("episodes").insert({
+            allEpisodes.push({
               movie_id: movieId,
               server_name: server.server_name,
               name: ep.name,
@@ -345,6 +346,13 @@ const ApiCrawl = () => {
               link_m3u8: ep.link_m3u8,
             });
           }
+        }
+        
+        // Batch insert in chunks of 100
+        const chunkSize = 100;
+        for (let i = 0; i < allEpisodes.length; i += chunkSize) {
+          const chunk = allEpisodes.slice(i, i + chunkSize);
+          await supabase.from("episodes").insert(chunk);
         }
       }
 
