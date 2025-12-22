@@ -95,7 +95,7 @@ const UsersManagement = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [newUserData, setNewUserData] = useState({ email: "", password: "", fullName: "" });
+  const [newUserData, setNewUserData] = useState({ email: "", password: "", confirmPassword: "", fullName: "" });
   const [editUserData, setEditUserData] = useState({ fullName: "" });
   const [newPassword, setNewPassword] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<PermissionKey[]>([]);
@@ -157,7 +157,7 @@ const UsersManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
       setIsAddUserOpen(false);
-      setNewUserData({ email: "", password: "", fullName: "" });
+      setNewUserData({ email: "", password: "", confirmPassword: "", fullName: "" });
       toast({ title: "Thành công", description: "Đã tạo người dùng mới" });
     },
     onError: (error: Error) => {
@@ -563,6 +563,19 @@ const UsersManagement = () => {
                 onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Nhập lại mật khẩu</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={newUserData.confirmPassword}
+                onChange={(e) => setNewUserData({ ...newUserData, confirmPassword: e.target.value })}
+              />
+              {newUserData.confirmPassword && newUserData.password !== newUserData.confirmPassword && (
+                <p className="text-sm text-destructive">Mật khẩu không khớp</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
@@ -570,7 +583,12 @@ const UsersManagement = () => {
             </Button>
             <Button
               onClick={() => createUserMutation.mutate(newUserData)}
-              disabled={createUserMutation.isPending || !newUserData.email || !newUserData.password}
+              disabled={
+                createUserMutation.isPending || 
+                !newUserData.email || 
+                !newUserData.password || 
+                newUserData.password !== newUserData.confirmPassword
+              }
             >
               {createUserMutation.isPending ? "Đang tạo..." : "Tạo người dùng"}
             </Button>
