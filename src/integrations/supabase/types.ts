@@ -123,6 +123,7 @@ export type Database = {
           id: string
           link_embed: string | null
           link_m3u8: string | null
+          link_mp4: string | null
           movie_id: string
           name: string
           server_name: string
@@ -134,6 +135,7 @@ export type Database = {
           id?: string
           link_embed?: string | null
           link_m3u8?: string | null
+          link_mp4?: string | null
           movie_id: string
           name: string
           server_name: string
@@ -145,6 +147,7 @@ export type Database = {
           id?: string
           link_embed?: string | null
           link_m3u8?: string | null
+          link_mp4?: string | null
           movie_id?: string
           name?: string
           server_name?: string

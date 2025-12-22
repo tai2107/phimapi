@@ -61,6 +61,7 @@ interface Episode {
   server_name: string;
   link_m3u8: string | null;
   link_embed: string | null;
+  link_mp4: string | null;
   filename: string | null;
 }
 
@@ -73,7 +74,7 @@ const linkTypes = [
 
 const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) => {
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
-  const [editingField, setEditingField] = useState<"m3u8" | "embed" | null>(null);
+  const [editingField, setEditingField] = useState<"m3u8" | "embed" | "mp4" | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newEpisode, setNewEpisode] = useState({
@@ -82,6 +83,7 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
     server_name: "Server #1",
     link_m3u8: "",
     link_embed: "",
+    link_mp4: "",
   });
 
   const queryClient = useQueryClient();
@@ -110,16 +112,17 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
         server_name: episode.server_name,
         link_m3u8: episode.link_m3u8 || null,
         link_embed: episode.link_embed || null,
+        link_mp4: episode.link_mp4 || null,
       };
 
-      const { error } = await supabase.from("episodes").insert(episodeData);
+      const { error } = await supabase.from("episodes").insert(episodeData as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["movie-episodes", movieId] });
       toast.success("Đã thêm tập phim");
       setIsDialogOpen(false);
-      setNewEpisode({ name: "", slug: "", server_name: "Server #1", link_m3u8: "", link_embed: "" });
+      setNewEpisode({ name: "", slug: "", server_name: "Server #1", link_m3u8: "", link_embed: "", link_mp4: "" });
     },
     onError: () => {
       toast.error("Không thể thêm tập phim");
@@ -136,8 +139,9 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
           server_name: episode.server_name,
           link_m3u8: episode.link_m3u8,
           link_embed: episode.link_embed,
+          link_mp4: episode.link_mp4,
           filename: episode.filename,
-        })
+        } as any)
         .eq("id", episode.id);
       
       if (error) throw error;
@@ -182,8 +186,8 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
     return url.substring(0, maxLength) + "...";
   };
 
-  const handleStartEdit = (episode: Episode, field: "m3u8" | "embed") => {
-    setEditingEpisode({ ...episode });
+  const handleStartEdit = (episode: Episode, field: "m3u8" | "embed" | "mp4") => {
+    setEditingEpisode({ ...episode, link_mp4: (episode as any).link_mp4 || null });
     setEditingField(field);
   };
 
@@ -258,6 +262,16 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
                     placeholder="https://player.example.com/embed/..."
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <span className="text-lg">🎥</span> Link MP4
+                  </Label>
+                  <Input
+                    value={newEpisode.link_mp4}
+                    onChange={(e) => setNewEpisode(prev => ({ ...prev, link_mp4: e.target.value }))}
+                    placeholder="https://example.com/video.mp4"
+                  />
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Hủy
@@ -307,6 +321,11 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
                           <TableHead>
                             <span className="flex items-center gap-1">
                               <span>📺</span> Link Embed
+                            </span>
+                          </TableHead>
+                          <TableHead>
+                            <span className="flex items-center gap-1">
+                              <span>🎥</span> Link MP4
                             </span>
                           </TableHead>
                           <TableHead className="w-[80px] text-right">Thao tác</TableHead>
@@ -442,6 +461,68 @@ const EpisodesTab = ({ movieId, onSave, onCancel, isSaving }: EpisodesTabProps) 
                                     {episode.link_embed && (
                                       <TooltipContent side="top" className="max-w-md">
                                         <p className="text-xs break-all">{episode.link_embed}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </TableCell>
+                            
+                            {/* MP4 Link */}
+                            <TableCell>
+                              {editingEpisode?.id === episode.id && editingField === "mp4" ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    value={editingEpisode.link_mp4 || ""}
+                                    onChange={(e) => setEditingEpisode({ ...editingEpisode, link_mp4: e.target.value })}
+                                    className="h-8 text-xs"
+                                    placeholder="https://..."
+                                  />
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => updateMutation.mutate(editingEpisode)}
+                                  >
+                                    <Check className="h-4 w-4 text-green-500" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={handleCancelEdit}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className="flex items-center gap-1 group cursor-pointer"
+                                        onClick={() => handleStartEdit(episode as Episode, "mp4")}
+                                      >
+                                        {(episode as any).link_mp4 ? (
+                                          <>
+                                            <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/30">
+                                              MP4
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                              {truncateUrl((episode as any).link_mp4, 30)}
+                                            </span>
+                                            <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground" />
+                                          </>
+                                        ) : (
+                                          <Badge variant="outline" className="text-muted-foreground border-dashed">
+                                            + Thêm MP4
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </TooltipTrigger>
+                                    {(episode as any).link_mp4 && (
+                                      <TooltipContent side="top" className="max-w-md">
+                                        <p className="text-xs break-all">{(episode as any).link_mp4}</p>
                                       </TooltipContent>
                                     )}
                                   </Tooltip>
