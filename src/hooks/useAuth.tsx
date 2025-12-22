@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
+  hasAdminAccess: boolean; // User has admin role OR any permissions
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
@@ -18,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAdminRole = async (userId: string) => {
@@ -40,6 +42,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const checkHasPermissions = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_permissions")
+        .select("permission")
+        .eq("user_id", userId)
+        .limit(1);
+
+      if (error) {
+        console.error("Error checking permissions:", error);
+        return false;
+      }
+      return data && data.length > 0;
+    } catch (error) {
+      console.error("Error checking permissions:", error);
+      return false;
+    }
+  };
+
+  const checkAdminAccess = async (userId: string) => {
+    const [adminRole, hasPermissions] = await Promise.all([
+      checkAdminRole(userId),
+      checkHasPermissions(userId)
+    ]);
+    setIsAdmin(adminRole);
+    setHasAdminAccess(adminRole || hasPermissions);
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -50,10 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Defer admin check to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            checkAdminRole(session.user.id).then(setIsAdmin);
+            checkAdminAccess(session.user.id);
           }, 0);
         } else {
           setIsAdmin(false);
+          setHasAdminAccess(false);
         }
         setIsLoading(false);
       }
@@ -65,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        checkAdminRole(session.user.id).then(setIsAdmin);
+        checkAdminAccess(session.user.id);
       }
       setIsLoading(false);
     });
@@ -108,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setIsAdmin(false);
+    setHasAdminAccess(false);
     // Clear localStorage to ensure clean state
     localStorage.removeItem('sb-vamvsowlpmqnugtoeebs-auth-token');
   };
@@ -118,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         isAdmin,
+        hasAdminAccess,
         isLoading,
         signIn,
         signUp,

@@ -26,7 +26,7 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, hasAdminAccess, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -119,7 +119,7 @@ export function Header() {
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  {isAdmin && (
+                  {hasAdminAccess && (
                     <DropdownMenuItem onClick={() => navigate("/admin")}>
                       <Settings className="mr-2 h-4 w-4" />
                       Quản trị
@@ -157,7 +157,7 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="z-[150] bg-popover border border-border shadow-lg">
-                  {isAdmin && (
+                  {hasAdminAccess && (
                     <DropdownMenuItem onClick={() => navigate("/admin")}>
                       <Settings className="mr-2 h-4 w-4" />
                       Quản trị
