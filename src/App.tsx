@@ -13,6 +13,13 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import ApiCrawl from "./pages/admin/ApiCrawl";
 import UsersManagement from "./pages/admin/UsersManagement";
+import MoviesManagement from "./pages/admin/MoviesManagement";
+import GenresManagement from "./pages/admin/GenresManagement";
+import CountriesManagement from "./pages/admin/CountriesManagement";
+import YearsManagement from "./pages/admin/YearsManagement";
+import TagsManagement from "./pages/admin/TagsManagement";
+import DirectorsManagement from "./pages/admin/DirectorsManagement";
+import ActorsManagement from "./pages/admin/ActorsManagement";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -55,6 +62,62 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <UsersManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/movies"
+              element={
+                <ProtectedAdminRoute>
+                  <MoviesManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/genres"
+              element={
+                <ProtectedAdminRoute>
+                  <GenresManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/countries"
+              element={
+                <ProtectedAdminRoute>
+                  <CountriesManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/years"
+              element={
+                <ProtectedAdminRoute>
+                  <YearsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/tags"
+              element={
+                <ProtectedAdminRoute>
+                  <TagsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/directors"
+              element={
+                <ProtectedAdminRoute>
+                  <DirectorsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/actors"
+              element={
+                <ProtectedAdminRoute>
+                  <ActorsManagement />
                 </ProtectedAdminRoute>
               }
             />

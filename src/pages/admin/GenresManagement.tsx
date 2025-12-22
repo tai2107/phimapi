@@ -1,0 +1,293 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Layers, Search, Plus, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { toast } from "sonner";
+
+const GenresManagement = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: "", slug: "" });
+  const queryClient = useQueryClient();
+
+  const { data: genres, isLoading } = useQuery({
+    queryKey: ["admin-genres"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("genres")
+        .select("*, movie_genres(id)")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; slug: string }) => {
+      const { error } = await supabase.from("genres").insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-genres"] });
+      toast.success("Đã thêm thể loại thành công");
+      setIsDialogOpen(false);
+      setFormData({ name: "", slug: "" });
+    },
+    onError: () => toast.error("Không thể thêm thể loại"),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; name: string; slug: string }) => {
+      const { error } = await supabase.from("genres").update(data).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-genres"] });
+      toast.success("Đã cập nhật thể loại thành công");
+      setEditItem(null);
+      setIsDialogOpen(false);
+      setFormData({ name: "", slug: "" });
+    },
+    onError: () => toast.error("Không thể cập nhật thể loại"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("genres").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-genres"] });
+      toast.success("Đã xóa thể loại thành công");
+      setDeleteId(null);
+    },
+    onError: () => toast.error("Không thể xóa thể loại"),
+  });
+
+  const filteredGenres = genres?.filter((g) =>
+    g.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  const handleSubmit = () => {
+    if (!formData.name.trim()) return toast.error("Vui lòng nhập tên thể loại");
+    const slug = formData.slug || formData.name.toLowerCase().replace(/\s+/g, "-");
+    if (editItem) {
+      updateMutation.mutate({ id: editItem.id, name: formData.name, slug });
+    } else {
+      createMutation.mutate({ name: formData.name, slug });
+    }
+  };
+
+  const openEditDialog = (item: { id: string; name: string; slug: string }) => {
+    setEditItem(item);
+    setFormData({ name: item.name, slug: item.slug });
+    setIsDialogOpen(true);
+  };
+
+  const openCreateDialog = () => {
+    setEditItem(null);
+    setFormData({ name: "", slug: "" });
+    setIsDialogOpen(true);
+  };
+
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AdminSidebar />
+        
+        <main className="flex-1 overflow-auto">
+          <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur">
+            <div className="flex h-16 items-center gap-4 px-6">
+              <SidebarTrigger className="lg:hidden" />
+              <div className="flex-1">
+                <h1 className="text-xl font-bold flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Thể loại
+                </h1>
+                <p className="text-sm text-muted-foreground">Quản lý thể loại phim</p>
+              </div>
+              <Button onClick={openCreateDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm thể loại
+              </Button>
+            </div>
+          </header>
+
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm thể loại..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Badge variant="secondary">{filteredGenres.length} thể loại</Badge>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead>Tên thể loại</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Số phim</TableHead>
+                    <TableHead>Ngày tạo</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i} className="border-border/50">
+                        {Array.from({ length: 5 }).map((_, j) => (
+                          <TableCell key={j}><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : filteredGenres.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        Không có thể loại nào
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredGenres.map((genre) => (
+                      <TableRow key={genre.id} className="border-border/50">
+                        <TableCell className="font-medium">{genre.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{genre.slug}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{genre.movie_genres?.length || 0} phim</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(genre.created_at).toLocaleDateString("vi-VN")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditDialog(genre)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Chỉnh sửa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => setDeleteId(genre.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Xóa
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editItem ? "Chỉnh sửa thể loại" : "Thêm thể loại mới"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Tên thể loại</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nhập tên thể loại"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Slug (tự động tạo nếu để trống)</Label>
+              <Input
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                placeholder="ten-the-loai"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+              {editItem ? "Cập nhật" : "Thêm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa thể loại này? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SidebarProvider>
+  );
+};
+
+export default GenresManagement;
