@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -37,10 +38,15 @@ import {
   Grid,
   List,
   Loader2,
-  CheckSquare
+  CheckSquare,
+  FolderOpen,
+  FolderPlus,
+  ChevronRight,
+  Home,
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { Label } from "@/components/ui/label";
 
 interface MediaFile {
   id: string;
@@ -50,18 +56,18 @@ interface MediaFile {
 }
 
 const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 const getFileIcon = (mimetype: string) => {
-  if (mimetype?.startsWith('image/')) return ImageIcon;
-  if (mimetype?.startsWith('video/')) return FileVideo;
-  if (mimetype?.startsWith('audio/')) return FileAudio;
-  if (mimetype === 'application/pdf') return FileText;
+  if (mimetype?.startsWith("image/")) return ImageIcon;
+  if (mimetype?.startsWith("video/")) return FileVideo;
+  if (mimetype?.startsWith("audio/")) return FileAudio;
+  if (mimetype === "application/pdf") return FileText;
   return File;
 };
 
@@ -70,21 +76,24 @@ const MediaManagement = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedFile, setSelectedFile] = useState<MediaFile | null>(null);
   const [fileToDelete, setFileToDelete] = useState<MediaFile | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [currentFolder, setCurrentFolder] = useState("");
+  const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
   // Fetch media files
   const { data: files = [], isLoading } = useQuery({
-    queryKey: ["media-files"],
+    queryKey: ["media-files", currentFolder],
     queryFn: async () => {
       const { data, error } = await supabase.storage
         .from("media")
-        .list("", {
+        .list(currentFolder, {
           limit: 1000,
           sortBy: { column: "created_at", order: "desc" },
         });
@@ -96,7 +105,8 @@ const MediaManagement = () => {
 
   // Get public URL for file
   const getPublicUrl = (fileName: string) => {
-    const { data } = supabase.storage.from("media").getPublicUrl(fileName);
+    const path = currentFolder ? `${currentFolder}/${fileName}` : fileName;
+    const { data } = supabase.storage.from("media").getPublicUrl(path);
     return data.publicUrl;
   };
 
@@ -111,9 +121,8 @@ const MediaManagement = () => {
 
     for (const file of Array.from(uploadedFiles)) {
       const fileName = `${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage
-        .from("media")
-        .upload(fileName, file);
+      const path = currentFolder ? `${currentFolder}/${fileName}` : fileName;
+      const { error } = await supabase.storage.from("media").upload(path, file);
 
       if (error) {
         console.error("Upload error:", error);
@@ -124,7 +133,7 @@ const MediaManagement = () => {
     }
 
     setIsUploading(false);
-    queryClient.invalidateQueries({ queryKey: ["media-files"] });
+    queryClient.invalidateQueries({ queryKey: ["media-files", currentFolder] });
 
     if (successCount > 0) {
       toast({
@@ -143,29 +152,55 @@ const MediaManagement = () => {
     event.target.value = "";
   };
 
+  // Create folder
+  const createFolderMutation = useMutation({
+    mutationFn: async (folderName: string) => {
+      const path = currentFolder
+        ? `${currentFolder}/${folderName}/.emptyFolderPlaceholder`
+        : `${folderName}/.emptyFolderPlaceholder`;
+      const { error } = await supabase.storage
+        .from("media")
+        .upload(path, new Blob([""]), { contentType: "text/plain" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media-files", currentFolder] });
+      toast({ title: "Đã tạo thư mục" });
+      setShowNewFolderDialog(false);
+      setNewFolderName("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tạo thư mục: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Soft delete - move to trash
   const deleteMutation = useMutation({
     mutationFn: async (file: MediaFile) => {
-      const { error: insertError } = await supabase
-        .from("deleted_media")
-        .insert({
-          file_name: file.name,
-          file_path: file.name,
-          file_size: file.metadata?.size || 0,
-          mime_type: file.metadata?.mimetype || null,
-          deleted_by: user?.id,
-        });
+      const sourcePath = currentFolder ? `${currentFolder}/${file.name}` : file.name;
       
+      const { error: insertError } = await supabase.from("deleted_media").insert({
+        file_name: file.name,
+        file_path: sourcePath,
+        file_size: file.metadata?.size || 0,
+        mime_type: file.metadata?.mimetype || null,
+        deleted_by: user?.id,
+      });
+
       if (insertError) throw insertError;
-      
+
       const { error: moveError } = await supabase.storage
         .from("media")
-        .move(file.name, `trash/${file.name}`);
-      
+        .move(sourcePath, `trash/${file.name}`);
+
       if (moveError) throw moveError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["media-files"] });
+      queryClient.invalidateQueries({ queryKey: ["media-files", currentFolder] });
       toast({ title: "Đã chuyển vào thùng rác" });
       setFileToDelete(null);
       setSelectedFile(null);
@@ -182,26 +217,24 @@ const MediaManagement = () => {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (fileIds: string[]) => {
-      const filesToDelete = files.filter(f => fileIds.includes(f.id));
-      
+      const filesToDelete = mediaFiles.filter((f) => fileIds.includes(f.id));
+
       for (const file of filesToDelete) {
-        await supabase
-          .from("deleted_media")
-          .insert({
-            file_name: file.name,
-            file_path: file.name,
-            file_size: file.metadata?.size || 0,
-            mime_type: file.metadata?.mimetype || null,
-            deleted_by: user?.id,
-          });
+        const sourcePath = currentFolder ? `${currentFolder}/${file.name}` : file.name;
         
-        await supabase.storage
-          .from("media")
-          .move(file.name, `trash/${file.name}`);
+        await supabase.from("deleted_media").insert({
+          file_name: file.name,
+          file_path: sourcePath,
+          file_size: file.metadata?.size || 0,
+          mime_type: file.metadata?.mimetype || null,
+          deleted_by: user?.id,
+        });
+
+        await supabase.storage.from("media").move(sourcePath, `trash/${file.name}`);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["media-files"] });
+      queryClient.invalidateQueries({ queryKey: ["media-files", currentFolder] });
       toast({ title: `Đã chuyển ${selectedIds.length} file vào thùng rác` });
       setSelectedIds([]);
       setShowBulkDeleteDialog(false);
@@ -223,7 +256,8 @@ const MediaManagement = () => {
 
   // Download file
   const downloadFile = async (fileName: string) => {
-    const { data, error } = await supabase.storage.from("media").download(fileName);
+    const path = currentFolder ? `${currentFolder}/${fileName}` : fileName;
+    const { data, error } = await supabase.storage.from("media").download(path);
     if (error) {
       toast({
         title: "Lỗi",
@@ -245,15 +279,14 @@ const MediaManagement = () => {
 
   // Bulk download
   const handleBulkDownload = async () => {
-    const filesToDownload = files.filter(f => selectedIds.includes(f.id));
+    const filesToDownload = mediaFiles.filter((f) => selectedIds.includes(f.id));
     setIsDownloading(true);
-    
+
     for (const file of filesToDownload) {
       await downloadFile(file.name);
-      // Small delay to prevent browser blocking
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
-    
+
     setIsDownloading(false);
     toast({ title: `Đã tải xuống ${filesToDownload.length} file` });
   };
@@ -261,7 +294,7 @@ const MediaManagement = () => {
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(filteredFiles.map(f => f.id));
+      setSelectedIds(mediaFiles.map((f) => f.id));
     } else {
       setSelectedIds([]);
     }
@@ -269,18 +302,46 @@ const MediaManagement = () => {
 
   const handleSelectOne = (id: string, checked: boolean) => {
     if (checked) {
-      setSelectedIds(prev => [...prev, id]);
+      setSelectedIds((prev) => [...prev, id]);
     } else {
-      setSelectedIds(prev => prev.filter(i => i !== id));
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
     }
   };
 
-  // Filter files
-  const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Navigation
+  const navigateToFolder = (folderName: string) => {
+    setSelectedIds([]);
+    if (currentFolder) {
+      setCurrentFolder(`${currentFolder}/${folderName}`);
+    } else {
+      setCurrentFolder(folderName);
+    }
+  };
 
-  const isImage = (mimetype: string) => mimetype?.startsWith('image/');
+  const navigateUp = () => {
+    setSelectedIds([]);
+    const parts = currentFolder.split("/");
+    parts.pop();
+    setCurrentFolder(parts.join("/"));
+  };
+
+  const navigateToRoot = () => {
+    setSelectedIds([]);
+    setCurrentFolder("");
+  };
+
+  // Filter and separate files
+  const filteredFiles = files.filter((file) => {
+    if (file.name === "trash" || file.name === ".emptyFolderPlaceholder") return false;
+    return file.name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const folders = filteredFiles.filter((f) => !f.metadata?.mimetype && f.id === null);
+  const mediaFiles = filteredFiles.filter((f) => f.metadata?.mimetype || f.id !== null);
+
+  const isImage = (mimetype: string) => mimetype?.startsWith("image/");
+
+  const breadcrumbs = currentFolder ? currentFolder.split("/") : [];
 
   return (
     <div className="space-y-6">
@@ -288,20 +349,44 @@ const MediaManagement = () => {
         <h1 className="text-2xl font-bold">Quản lý Media</h1>
         <div className="flex items-center gap-2">
           <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            variant={viewMode === "grid" ? "default" : "outline"}
             size="icon"
-            onClick={() => setViewMode('grid')}
+            onClick={() => setViewMode("grid")}
           >
             <Grid className="h-4 w-4" />
           </Button>
           <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
+            variant={viewMode === "list" ? "default" : "outline"}
             size="icon"
-            onClick={() => setViewMode('list')}
+            onClick={() => setViewMode("list")}
           >
             <List className="h-4 w-4" />
           </Button>
         </div>
+      </div>
+
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-1 text-sm bg-muted/50 rounded-lg p-2">
+        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={navigateToRoot}>
+          <Home className="h-4 w-4" />
+        </Button>
+        {breadcrumbs.map((crumb, index) => (
+          <div key={index} className="flex items-center gap-1">
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => {
+                const newPath = breadcrumbs.slice(0, index + 1).join("/");
+                setCurrentFolder(newPath);
+                setSelectedIds([]);
+              }}
+            >
+              {crumb}
+            </Button>
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
@@ -314,7 +399,11 @@ const MediaManagement = () => {
             className="pl-10"
           />
         </div>
-        <div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowNewFolderDialog(true)}>
+            <FolderPlus className="h-4 w-4 mr-2" />
+            Tạo thư mục
+          </Button>
           <input
             type="file"
             id="file-upload"
@@ -340,15 +429,8 @@ const MediaManagement = () => {
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
           <CheckSquare className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">
-            Đã chọn {selectedIds.length} file
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkDownload}
-            disabled={isDownloading}
-          >
+          <span className="text-sm font-medium">Đã chọn {selectedIds.length} file</span>
+          <Button variant="outline" size="sm" onClick={handleBulkDownload} disabled={isDownloading}>
             {isDownloading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -356,33 +438,25 @@ const MediaManagement = () => {
             )}
             Tải xuống
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowBulkDeleteDialog(true)}
-          >
+          <Button variant="destructive" size="sm" onClick={() => setShowBulkDeleteDialog(true)}>
             <Trash2 className="h-4 w-4 mr-2" />
             Xóa
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedIds([])}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
             Bỏ chọn
           </Button>
         </div>
       )}
 
       {/* Select all checkbox */}
-      {filteredFiles.length > 0 && (
+      {mediaFiles.length > 0 && (
         <div className="flex items-center gap-2">
           <Checkbox
-            checked={filteredFiles.length > 0 && selectedIds.length === filteredFiles.length}
+            checked={mediaFiles.length > 0 && selectedIds.length === mediaFiles.length}
             onCheckedChange={handleSelectAll}
           />
           <span className="text-sm text-muted-foreground">
-            Chọn tất cả ({filteredFiles.length} file)
+            Chọn tất cả ({mediaFiles.length} file)
           </span>
         </div>
       )}
@@ -391,7 +465,7 @@ const MediaManagement = () => {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : filteredFiles.length === 0 ? (
+      ) : filteredFiles.length === 0 && !currentFolder ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
@@ -400,32 +474,60 @@ const MediaManagement = () => {
             </p>
           </CardContent>
         </Card>
-      ) : viewMode === 'grid' ? (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filteredFiles.map((file) => {
+          {/* Back button */}
+          {currentFolder && (
+            <Card
+              className="cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden"
+              onClick={navigateUp}
+            >
+              <div className="aspect-square relative bg-muted flex flex-col items-center justify-center">
+                <FolderOpen className="h-12 w-12 text-muted-foreground" />
+                <span className="text-sm mt-2">..</span>
+              </div>
+            </Card>
+          )}
+
+          {/* Folders */}
+          {folders.map((folder) => (
+            <Card
+              key={folder.name}
+              className="cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden"
+              onClick={() => navigateToFolder(folder.name)}
+            >
+              <div className="aspect-square relative bg-muted flex flex-col items-center justify-center">
+                <FolderOpen className="h-12 w-12 text-amber-500" />
+              </div>
+              <CardContent className="p-2">
+                <p className="text-xs truncate text-center" title={folder.name}>
+                  {folder.name}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+
+          {/* Files */}
+          {mediaFiles.map((file) => {
             const FileIcon = getFileIcon(file.metadata?.mimetype);
             const publicUrl = getPublicUrl(file.name);
             const isSelected = selectedIds.includes(file.id);
-            
+
             return (
               <Card
                 key={file.id}
                 className={`cursor-pointer hover:ring-2 hover:ring-primary transition-all overflow-hidden relative ${
-                  isSelected ? 'ring-2 ring-primary bg-primary/5' : ''
+                  isSelected ? "ring-2 ring-primary bg-primary/5" : ""
                 }`}
               >
-                {/* Checkbox overlay */}
-                <div 
-                  className="absolute top-2 left-2 z-10"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={isSelected}
                     onCheckedChange={(checked) => handleSelectOne(file.id, !!checked)}
                     className="bg-background/80 backdrop-blur-sm"
                   />
                 </div>
-                <div 
+                <div
                   className="aspect-square relative bg-muted flex items-center justify-center"
                   onClick={() => setSelectedFile(file)}
                 >
@@ -455,16 +557,44 @@ const MediaManagement = () => {
       ) : (
         <Card>
           <div className="divide-y">
-            {filteredFiles.map((file) => {
+            {/* Back button */}
+            {currentFolder && (
+              <div
+                className="flex items-center gap-4 p-4 hover:bg-muted/50 cursor-pointer"
+                onClick={navigateUp}
+              >
+                <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                  <FolderOpen className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <span className="font-medium">..</span>
+              </div>
+            )}
+
+            {/* Folders */}
+            {folders.map((folder) => (
+              <div
+                key={folder.name}
+                className="flex items-center gap-4 p-4 hover:bg-muted/50 cursor-pointer"
+                onClick={() => navigateToFolder(folder.name)}
+              >
+                <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                  <FolderOpen className="h-6 w-6 text-amber-500" />
+                </div>
+                <span className="font-medium">{folder.name}</span>
+              </div>
+            ))}
+
+            {/* Files */}
+            {mediaFiles.map((file) => {
               const FileIcon = getFileIcon(file.metadata?.mimetype);
               const publicUrl = getPublicUrl(file.name);
               const isSelected = selectedIds.includes(file.id);
-              
+
               return (
                 <div
                   key={file.id}
                   className={`flex items-center gap-4 p-4 hover:bg-muted/50 cursor-pointer ${
-                    isSelected ? 'bg-primary/5' : ''
+                    isSelected ? "bg-primary/5" : ""
                   }`}
                 >
                   <div onClick={(e) => e.stopPropagation()}>
@@ -473,7 +603,7 @@ const MediaManagement = () => {
                       onCheckedChange={(checked) => handleSelectOne(file.id, !!checked)}
                     />
                   </div>
-                  <div 
+                  <div
                     className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden"
                     onClick={() => setSelectedFile(file)}
                   >
@@ -549,18 +679,14 @@ const MediaManagement = () => {
                     alt={selectedFile.name}
                     className="max-w-full max-h-full object-contain"
                   />
-                ) : selectedFile.metadata?.mimetype?.startsWith('video/') ? (
+                ) : selectedFile.metadata?.mimetype?.startsWith("video/") ? (
                   <video
                     src={getPublicUrl(selectedFile.name)}
                     controls
                     className="max-w-full max-h-full"
                   />
-                ) : selectedFile.metadata?.mimetype?.startsWith('audio/') ? (
-                  <audio
-                    src={getPublicUrl(selectedFile.name)}
-                    controls
-                    className="w-full"
-                  />
+                ) : selectedFile.metadata?.mimetype?.startsWith("audio/") ? (
+                  <audio src={getPublicUrl(selectedFile.name)} controls className="w-full" />
                 ) : (
                   <div className="text-center">
                     <File className="h-16 w-16 text-muted-foreground mx-auto mb-2" />
@@ -568,7 +694,7 @@ const MediaManagement = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Kích thước</p>
@@ -576,22 +702,20 @@ const MediaManagement = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Loại file</p>
-                  <p>{selectedFile.metadata?.mimetype || 'Unknown'}</p>
+                  <p>{selectedFile.metadata?.mimetype || "Unknown"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Ngày tải lên</p>
-                  <p>{format(new Date(selectedFile.created_at), "dd/MM/yyyy HH:mm", { locale: vi })}</p>
+                  <p>
+                    {format(new Date(selectedFile.created_at), "dd/MM/yyyy HH:mm", { locale: vi })}
+                  </p>
                 </div>
               </div>
 
               <div>
                 <p className="text-muted-foreground text-sm mb-2">URL</p>
                 <div className="flex gap-2">
-                  <Input
-                    value={getPublicUrl(selectedFile.name)}
-                    readOnly
-                    className="flex-1"
-                  />
+                  <Input value={getPublicUrl(selectedFile.name)} readOnly className="flex-1" />
                   <Button
                     variant="outline"
                     onClick={() => copyToClipboard(getPublicUrl(selectedFile.name))}
@@ -602,17 +726,11 @@ const MediaManagement = () => {
               </div>
 
               <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => downloadFile(selectedFile.name)}
-                >
+                <Button variant="outline" onClick={() => downloadFile(selectedFile.name)}>
                   <Download className="h-4 w-4 mr-2" />
                   Tải xuống
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setFileToDelete(selectedFile)}
-                >
+                <Button variant="destructive" onClick={() => setFileToDelete(selectedFile)}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Xóa
                 </Button>
@@ -622,14 +740,45 @@ const MediaManagement = () => {
         </DialogContent>
       </Dialog>
 
+      {/* New folder dialog */}
+      <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tạo thư mục mới</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="folder-name">Tên thư mục</Label>
+              <Input
+                id="folder-name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Nhập tên thư mục"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewFolderDialog(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={() => createFolderMutation.mutate(newFolderName)}
+              disabled={!newFolderName.trim() || createFolderMutation.isPending}
+            >
+              {createFolderMutation.isPending ? "Đang tạo..." : "Tạo thư mục"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Single delete confirmation dialog */}
       <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Chuyển vào thùng rác</AlertDialogTitle>
             <AlertDialogDescription>
-              File "{fileToDelete?.name}" sẽ được chuyển vào thùng rác và tự động xóa sau 30 ngày.
-              Bạn có thể khôi phục file từ thùng rác.
+              File &quot;{fileToDelete?.name}&quot; sẽ được chuyển vào thùng rác và tự động xóa sau
+              30 ngày. Bạn có thể khôi phục file từ thùng rác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

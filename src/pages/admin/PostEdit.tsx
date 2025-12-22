@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save, FileText, Eye } from "lucide-react";
+import { ArrowLeft, Save, FileText, Eye, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import RichTextEditor from "@/components/admin/movie-edit/RichTextEditor";
 import SEOPreview, { CharacterCounter } from "@/components/admin/movie-edit/SEOPreview";
+import MediaPicker from "@/components/admin/MediaPicker";
 
 interface PostFormData {
   title: string;
@@ -39,6 +40,7 @@ const PostEdit = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isNew = id === "new";
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
 
   const [formData, setFormData] = useState<PostFormData>({
     title: "",
@@ -361,12 +363,22 @@ const PostEdit = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="thumbnail_url">Ảnh đại diện</Label>
-                    <Input
-                      id="thumbnail_url"
-                      value={formData.thumbnail_url}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, thumbnail_url: e.target.value }))}
-                      placeholder="URL ảnh đại diện"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="thumbnail_url"
+                        value={formData.thumbnail_url}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, thumbnail_url: e.target.value }))}
+                        placeholder="URL ảnh đại diện"
+                        className="flex-1"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => setShowMediaPicker(true)}
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    </div>
                     {formData.thumbnail_url && (
                       <img
                         src={formData.thumbnail_url}
@@ -379,6 +391,13 @@ const PostEdit = () => {
               </div>
             </div>
           </div>
+
+          <MediaPicker
+            open={showMediaPicker}
+            onOpenChange={setShowMediaPicker}
+            onSelect={(url) => setFormData((prev) => ({ ...prev, thumbnail_url: url }))}
+            accept="image"
+          />
         </main>
       </div>
     </SidebarProvider>
