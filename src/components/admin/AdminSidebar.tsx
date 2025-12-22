@@ -17,7 +17,8 @@ import {
   UserCircle,
   List,
   FileText,
-  Trash2
+  Trash2,
+  Image
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,6 +45,7 @@ const mainNavItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Bài viết", url: "/admin/posts", icon: FileText },
   { title: "Danh mục BV", url: "/admin/post-categories", icon: FolderOpen },
+  { title: "Media", url: "/admin/media", icon: Image },
 ];
 
 const movieManagementItems = [
