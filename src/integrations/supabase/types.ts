@@ -88,6 +88,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_any_permission: { Args: { _user_id: string }; Returns: boolean }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["user_permission"]
