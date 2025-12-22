@@ -74,17 +74,70 @@ interface UserRole {
 
 interface UserPermission {
   user_id: string;
-  permission: "crawl_movies" | "manage_movies" | "manage_categories" | "manage_menus" | "access_settings";
+  permission: PermissionKey;
 }
 
-type PermissionKey = "crawl_movies" | "manage_movies" | "manage_categories" | "manage_menus" | "access_settings";
+type PermissionKey = 
+  | "crawl_movies"
+  | "movies_add"
+  | "movies_edit"
+  | "movies_delete"
+  | "categories_add"
+  | "categories_edit"
+  | "categories_delete"
+  | "menus_add"
+  | "menus_edit"
+  | "menus_delete"
+  | "access_settings";
 
-const PERMISSIONS: { key: PermissionKey; label: string; description: string }[] = [
-  { key: "crawl_movies", label: "Crawl phim mới", description: "Có thể crawl và cập nhật phim từ API" },
-  { key: "manage_movies", label: "Quản lý phim", description: "Thêm, sửa, xóa phim" },
-  { key: "manage_categories", label: "Quản lý danh mục", description: "Tạo và quản lý thể loại phim" },
-  { key: "manage_menus", label: "Quản lý menu", description: "Tạo và chỉnh sửa menu điều hướng" },
-  { key: "access_settings", label: "Truy cập cài đặt", description: "Xem và thay đổi cài đặt hệ thống" },
+interface PermissionGroup {
+  title: string;
+  description: string;
+  permissions: { key: PermissionKey; label: string }[];
+}
+
+const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    title: "Crawl phim",
+    description: "Quyền crawl và cập nhật phim từ API",
+    permissions: [
+      { key: "crawl_movies", label: "Crawl phim mới" },
+    ],
+  },
+  {
+    title: "Quản lý phim",
+    description: "Quyền thêm, sửa, xóa phim",
+    permissions: [
+      { key: "movies_add", label: "Thêm phim" },
+      { key: "movies_edit", label: "Sửa phim" },
+      { key: "movies_delete", label: "Xóa phim" },
+    ],
+  },
+  {
+    title: "Quản lý danh mục",
+    description: "Quyền thêm, sửa, xóa danh mục/thể loại",
+    permissions: [
+      { key: "categories_add", label: "Thêm danh mục" },
+      { key: "categories_edit", label: "Sửa danh mục" },
+      { key: "categories_delete", label: "Xóa danh mục" },
+    ],
+  },
+  {
+    title: "Quản lý menu",
+    description: "Quyền thêm, sửa, xóa menu điều hướng",
+    permissions: [
+      { key: "menus_add", label: "Thêm menu" },
+      { key: "menus_edit", label: "Sửa menu" },
+      { key: "menus_delete", label: "Xóa menu" },
+    ],
+  },
+  {
+    title: "Cài đặt hệ thống",
+    description: "Quyền truy cập và thay đổi cài đặt",
+    permissions: [
+      { key: "access_settings", label: "Truy cập cài đặt" },
+    ],
+  },
 ];
 
 const UsersManagement = () => {
@@ -98,6 +151,7 @@ const UsersManagement = () => {
   const [newUserData, setNewUserData] = useState({ email: "", password: "", confirmPassword: "", fullName: "" });
   const [editUserData, setEditUserData] = useState({ fullName: "" });
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<PermissionKey[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -230,7 +284,7 @@ const UsersManagement = () => {
       if (newPermissions.length > 0) {
         const { error } = await supabase
           .from("user_permissions")
-          .insert(newPermissions.map(p => ({ user_id: userId, permission: p as "crawl_movies" | "manage_movies" | "manage_categories" | "manage_menus" | "access_settings" })));
+          .insert(newPermissions.map(p => ({ user_id: userId, permission: p })));
         if (error) throw error;
       }
     },
@@ -246,15 +300,17 @@ const UsersManagement = () => {
     },
   });
 
-  // Delete user mutation
+  // Delete user mutation using edge function
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Delete from profiles (will cascade)
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { userId },
+      });
+      
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
@@ -262,7 +318,31 @@ const UsersManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-permissions"] });
       setIsDeleteOpen(false);
       setSelectedUser(null);
-      toast({ title: "Thành công", description: "Đã xóa người dùng" });
+      toast({ title: "Thành công", description: "Đã xóa người dùng hoàn toàn" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Lỗi", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Change password mutation using edge function
+  const changePasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-change-password", {
+        body: { userId, newPassword },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      setIsChangePasswordOpen(false);
+      setSelectedUser(null);
+      setNewPassword("");
+      setConfirmNewPassword("");
+      toast({ title: "Thành công", description: "Đã đổi mật khẩu người dùng" });
     },
     onError: (error: Error) => {
       toast({ title: "Lỗi", description: error.message, variant: "destructive" });
@@ -450,18 +530,13 @@ const UsersManagement = () => {
                                     Toàn quyền
                                   </Badge>
                                 ) : userPermissions.length > 0 ? (
-                                  userPermissions.slice(0, 2).map(p => (
-                                    <Badge key={p} variant="outline" className="text-xs">
-                                      {PERMISSIONS.find(perm => perm.key === p)?.label}
+                                  <>
+                                    <Badge variant="outline" className="text-xs">
+                                      {userPermissions.length} quyền
                                     </Badge>
-                                  ))
+                                  </>
                                 ) : (
                                   <span className="text-sm text-muted-foreground">Không có</span>
-                                )}
-                                {userPermissions.length > 2 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{userPermissions.length - 2}
-                                  </Badge>
                                 )}
                               </div>
                             </TableCell>
@@ -655,31 +730,48 @@ const UsersManagement = () => {
             </div>
 
             {!isAdmin && (
-              <div className="space-y-2">
-                <Label>Quyền cụ thể</Label>
-                <div className="space-y-2">
-                  {PERMISSIONS.map((perm) => (
-                    <div
-                      key={perm.key}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors"
-                    >
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                {PERMISSION_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-sm">{perm.label}</p>
-                        <p className="text-xs text-muted-foreground">{perm.description}</p>
+                        <p className="font-medium text-sm">{group.title}</p>
+                        <p className="text-xs text-muted-foreground">{group.description}</p>
                       </div>
                       <Checkbox
-                        checked={selectedPermissions.includes(perm.key)}
+                        checked={group.permissions.every(p => selectedPermissions.includes(p.key))}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedPermissions([...selectedPermissions, perm.key]);
+                            const newPerms = [...new Set([...selectedPermissions, ...group.permissions.map(p => p.key)])];
+                            setSelectedPermissions(newPerms);
                           } else {
-                            setSelectedPermissions(selectedPermissions.filter(p => p !== perm.key));
+                            setSelectedPermissions(selectedPermissions.filter(p => !group.permissions.map(gp => gp.key).includes(p)));
                           }
                         }}
                       />
                     </div>
-                  ))}
-                </div>
+                    <div className="ml-4 space-y-1">
+                      {group.permissions.map((perm) => (
+                        <div
+                          key={perm.key}
+                          className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <span className="text-sm">{perm.label}</span>
+                          <Checkbox
+                            checked={selectedPermissions.includes(perm.key)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedPermissions([...selectedPermissions, perm.key]);
+                              } else {
+                                setSelectedPermissions(selectedPermissions.filter(p => p !== perm.key));
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -721,16 +813,41 @@ const UsersManagement = () => {
                 onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
-            <p className="text-sm text-muted-foreground">
-              Lưu ý: Chức năng đổi mật khẩu cần được thực hiện qua Supabase Admin API
-            </p>
+            <div className="space-y-2">
+              <Label htmlFor="confirmNewPassword">Nhập lại mật khẩu</Label>
+              <Input
+                id="confirmNewPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+              />
+              {confirmNewPassword && newPassword !== confirmNewPassword && (
+                <p className="text-sm text-destructive">Mật khẩu không khớp</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsChangePasswordOpen(false);
               setNewPassword("");
+              setConfirmNewPassword("");
             }}>
-              Đóng
+              Hủy
+            </Button>
+            <Button
+              onClick={() => selectedUser && changePasswordMutation.mutate({
+                userId: selectedUser.id,
+                newPassword,
+              })}
+              disabled={
+                changePasswordMutation.isPending || 
+                !newPassword || 
+                newPassword.length < 6 ||
+                newPassword !== confirmNewPassword
+              }
+            >
+              {changePasswordMutation.isPending ? "Đang lưu..." : "Đổi mật khẩu"}
             </Button>
           </DialogFooter>
         </DialogContent>

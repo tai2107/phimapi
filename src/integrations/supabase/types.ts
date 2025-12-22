@@ -108,9 +108,15 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       user_permission:
         | "crawl_movies"
-        | "manage_movies"
-        | "manage_categories"
-        | "manage_menus"
+        | "movies_add"
+        | "movies_edit"
+        | "movies_delete"
+        | "categories_add"
+        | "categories_edit"
+        | "categories_delete"
+        | "menus_add"
+        | "menus_edit"
+        | "menus_delete"
         | "access_settings"
     }
     CompositeTypes: {
@@ -242,9 +248,15 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       user_permission: [
         "crawl_movies",
-        "manage_movies",
-        "manage_categories",
-        "manage_menus",
+        "movies_add",
+        "movies_edit",
+        "movies_delete",
+        "categories_add",
+        "categories_edit",
+        "categories_delete",
+        "menus_add",
+        "menus_edit",
+        "menus_delete",
         "access_settings",
       ],
     },
