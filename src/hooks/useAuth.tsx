@@ -98,8 +98,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      // If signOut fails (e.g., session not found), clear local state anyway
+      console.error("Sign out error:", error);
+    }
+    // Always clear local state regardless of API response
+    setUser(null);
+    setSession(null);
     setIsAdmin(false);
+    // Clear localStorage to ensure clean state
+    localStorage.removeItem('sb-vamvsowlpmqnugtoeebs-auth-token');
   };
 
   return (
