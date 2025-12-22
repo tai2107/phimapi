@@ -276,6 +276,19 @@ const MovieInfoTab = ({ formData, setFormData, onSave, onCancel, isSaving }: Mov
             />
           </div>
 
+          <div className="space-y-3">
+            <Label htmlFor="seo_keyword">SEO Keyword</Label>
+            <Input
+              id="seo_keyword"
+              value={formData.seo_keyword || ""}
+              onChange={(e) => updateField("seo_keyword", e.target.value)}
+              placeholder="phim avatar, phim hành động, phim khoa học viễn tưởng, xem phim hd"
+            />
+            <p className="text-xs text-muted-foreground">
+              Nhập các từ khóa SEO, phân cách bằng dấu phẩy
+            </p>
+          </div>
+
           <Separator />
 
           <SEOPreview

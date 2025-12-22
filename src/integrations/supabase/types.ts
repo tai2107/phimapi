@@ -20,6 +20,9 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
           slug: string
         }
         Insert: {
@@ -27,6 +30,9 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug: string
         }
         Update: {
@@ -34,6 +40,9 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug?: string
         }
         Relationships: []
@@ -43,18 +52,27 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
           slug: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug?: string
         }
         Relationships: []
@@ -98,6 +116,9 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
           slug: string
         }
         Insert: {
@@ -105,6 +126,9 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug: string
         }
         Update: {
@@ -112,6 +136,9 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug?: string
         }
         Relationships: []
@@ -168,18 +195,27 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
           slug: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug?: string
         }
         Relationships: []
@@ -363,6 +399,10 @@ export type Database = {
           origin_name: string | null
           poster_url: string | null
           quality: string | null
+          schema_json: string | null
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
           slug: string
           status: string
           sub_docquyen: boolean
@@ -390,6 +430,10 @@ export type Database = {
           origin_name?: string | null
           poster_url?: string | null
           quality?: string | null
+          schema_json?: string | null
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug: string
           status?: string
           sub_docquyen?: boolean
@@ -417,6 +461,10 @@ export type Database = {
           origin_name?: string | null
           poster_url?: string | null
           quality?: string | null
+          schema_json?: string | null
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug?: string
           status?: string
           sub_docquyen?: boolean
@@ -465,18 +513,27 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
           slug: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
           slug?: string
         }
         Relationships: []

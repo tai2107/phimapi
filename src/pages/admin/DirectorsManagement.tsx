@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 import { Clapperboard, Search, Plus, Pencil, Trash2, MoreVertical, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,9 +45,9 @@ import { toast } from "sonner";
 const DirectorsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string; avatar_url: string | null } | null>(null);
+  const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string; avatar_url: string | null; seo_title: string | null; seo_description: string | null; seo_keyword: string | null } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", slug: "", avatar_url: "" });
+  const [formData, setFormData] = useState({ name: "", slug: "", avatar_url: "", seo_title: "", seo_description: "", seo_keyword: "" });
   const queryClient = useQueryClient();
 
   const { data: directors, isLoading } = useQuery({
@@ -62,7 +63,7 @@ const DirectorsManagement = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; slug: string; avatar_url?: string }) => {
+    mutationFn: async (data: { name: string; slug: string; avatar_url?: string; seo_title?: string; seo_description?: string; seo_keyword?: string }) => {
       const { error } = await supabase.from("directors").insert(data);
       if (error) throw error;
     },
@@ -70,13 +71,13 @@ const DirectorsManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-directors"] });
       toast.success("Đã thêm đạo diễn thành công");
       setIsDialogOpen(false);
-      setFormData({ name: "", slug: "", avatar_url: "" });
+      setFormData({ name: "", slug: "", avatar_url: "", seo_title: "", seo_description: "", seo_keyword: "" });
     },
     onError: () => toast.error("Không thể thêm đạo diễn"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name: string; slug: string; avatar_url?: string }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name: string; slug: string; avatar_url?: string; seo_title?: string; seo_description?: string; seo_keyword?: string }) => {
       const { error } = await supabase.from("directors").update(data).eq("id", id);
       if (error) throw error;
     },
@@ -85,7 +86,7 @@ const DirectorsManagement = () => {
       toast.success("Đã cập nhật đạo diễn thành công");
       setEditItem(null);
       setIsDialogOpen(false);
-      setFormData({ name: "", slug: "", avatar_url: "" });
+      setFormData({ name: "", slug: "", avatar_url: "", seo_title: "", seo_description: "", seo_keyword: "" });
     },
     onError: () => toast.error("Không thể cập nhật đạo diễn"),
   });
@@ -110,7 +111,13 @@ const DirectorsManagement = () => {
   const handleSubmit = () => {
     if (!formData.name.trim()) return toast.error("Vui lòng nhập tên đạo diễn");
     const slug = formData.slug || formData.name.toLowerCase().replace(/\s+/g, "-");
-    const data: { name: string; slug: string; avatar_url?: string } = { name: formData.name, slug };
+    const data: any = { 
+      name: formData.name, 
+      slug,
+      seo_title: formData.seo_title || undefined,
+      seo_description: formData.seo_description || undefined,
+      seo_keyword: formData.seo_keyword || undefined,
+    };
     if (formData.avatar_url) data.avatar_url = formData.avatar_url;
     
     if (editItem) {
@@ -120,15 +127,22 @@ const DirectorsManagement = () => {
     }
   };
 
-  const openEditDialog = (item: { id: string; name: string; slug: string; avatar_url: string | null }) => {
+  const openEditDialog = (item: any) => {
     setEditItem(item);
-    setFormData({ name: item.name, slug: item.slug, avatar_url: item.avatar_url || "" });
+    setFormData({ 
+      name: item.name, 
+      slug: item.slug, 
+      avatar_url: item.avatar_url || "",
+      seo_title: item.seo_title || "",
+      seo_description: item.seo_description || "",
+      seo_keyword: item.seo_keyword || ""
+    });
     setIsDialogOpen(true);
   };
 
   const openCreateDialog = () => {
     setEditItem(null);
-    setFormData({ name: "", slug: "", avatar_url: "" });
+    setFormData({ name: "", slug: "", avatar_url: "", seo_title: "", seo_description: "", seo_keyword: "" });
     setIsDialogOpen(true);
   };
 
@@ -260,7 +274,7 @@ const DirectorsManagement = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Tên đạo diễn</Label>
+              <Label>Tên <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -268,7 +282,7 @@ const DirectorsManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Slug (tự động tạo nếu để trống)</Label>
+              <Label>Đường dẫn tĩnh</Label>
               <Input
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
@@ -276,11 +290,36 @@ const DirectorsManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>URL ảnh đại diện (tùy chọn)</Label>
+              <Label>URL ảnh đại diện</Label>
               <Input
                 value={formData.avatar_url}
                 onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
                 placeholder="https://..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SEO Title</Label>
+              <Input
+                value={formData.seo_title}
+                onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                placeholder="Đạo diễn Tên - TenWeb.org"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SEO Description</Label>
+              <Textarea
+                value={formData.seo_description}
+                onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                placeholder="Mô tả SEO cho đạo diễn..."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SEO Keyword</Label>
+              <Input
+                value={formData.seo_keyword}
+                onChange={(e) => setFormData({ ...formData, seo_keyword: e.target.value })}
+                placeholder="đạo diễn, phim của đạo diễn"
               />
             </div>
           </div>

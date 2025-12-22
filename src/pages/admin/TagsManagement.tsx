@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
 import { Tag, Search, Plus, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,9 +45,9 @@ import { toast } from "sonner";
 const TagsManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [editItem, setEditItem] = useState<{ id: string; name: string; slug: string; seo_title: string | null; seo_description: string | null; seo_keyword: string | null } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", slug: "" });
+  const [formData, setFormData] = useState({ name: "", slug: "", seo_title: "", seo_description: "", seo_keyword: "" });
   const queryClient = useQueryClient();
 
   const { data: tags, isLoading } = useQuery({
@@ -62,7 +63,7 @@ const TagsManagement = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; slug: string }) => {
+    mutationFn: async (data: { name: string; slug: string; seo_title?: string; seo_description?: string; seo_keyword?: string }) => {
       const { error } = await supabase.from("tags").insert(data);
       if (error) throw error;
     },
@@ -70,13 +71,13 @@ const TagsManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-tags"] });
       toast.success("Đã thêm tag thành công");
       setIsDialogOpen(false);
-      setFormData({ name: "", slug: "" });
+      setFormData({ name: "", slug: "", seo_title: "", seo_description: "", seo_keyword: "" });
     },
     onError: () => toast.error("Không thể thêm tag"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name: string; slug: string }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name: string; slug: string; seo_title?: string; seo_description?: string; seo_keyword?: string }) => {
       const { error } = await supabase.from("tags").update(data).eq("id", id);
       if (error) throw error;
     },
@@ -85,7 +86,7 @@ const TagsManagement = () => {
       toast.success("Đã cập nhật tag thành công");
       setEditItem(null);
       setIsDialogOpen(false);
-      setFormData({ name: "", slug: "" });
+      setFormData({ name: "", slug: "", seo_title: "", seo_description: "", seo_keyword: "" });
     },
     onError: () => toast.error("Không thể cập nhật tag"),
   });
@@ -110,22 +111,35 @@ const TagsManagement = () => {
   const handleSubmit = () => {
     if (!formData.name.trim()) return toast.error("Vui lòng nhập tên tag");
     const slug = formData.slug || formData.name.toLowerCase().replace(/\s+/g, "-");
+    const data = {
+      name: formData.name,
+      slug,
+      seo_title: formData.seo_title || undefined,
+      seo_description: formData.seo_description || undefined,
+      seo_keyword: formData.seo_keyword || undefined,
+    };
     if (editItem) {
-      updateMutation.mutate({ id: editItem.id, name: formData.name, slug });
+      updateMutation.mutate({ id: editItem.id, ...data });
     } else {
-      createMutation.mutate({ name: formData.name, slug });
+      createMutation.mutate(data);
     }
   };
 
-  const openEditDialog = (item: { id: string; name: string; slug: string }) => {
+  const openEditDialog = (item: any) => {
     setEditItem(item);
-    setFormData({ name: item.name, slug: item.slug });
+    setFormData({ 
+      name: item.name, 
+      slug: item.slug,
+      seo_title: item.seo_title || "",
+      seo_description: item.seo_description || "",
+      seo_keyword: item.seo_keyword || ""
+    });
     setIsDialogOpen(true);
   };
 
   const openCreateDialog = () => {
     setEditItem(null);
-    setFormData({ name: "", slug: "" });
+    setFormData({ name: "", slug: "", seo_title: "", seo_description: "", seo_keyword: "" });
     setIsDialogOpen(true);
   };
 
@@ -242,7 +256,7 @@ const TagsManagement = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Tên tag</Label>
+              <Label>Tên <span className="text-destructive">*</span></Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -250,11 +264,36 @@ const TagsManagement = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Slug (tự động tạo nếu để trống)</Label>
+              <Label>Đường dẫn tĩnh</Label>
               <Input
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                 placeholder="ten-tag"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SEO Title</Label>
+              <Input
+                value={formData.seo_title}
+                onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                placeholder="Phim Tag - TenWeb.org"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SEO Description</Label>
+              <Textarea
+                value={formData.seo_description}
+                onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                placeholder="Mô tả SEO cho tag..."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SEO Keyword</Label>
+              <Input
+                value={formData.seo_keyword}
+                onChange={(e) => setFormData({ ...formData, seo_keyword: e.target.value })}
+                placeholder="keyword1, keyword2, keyword3"
               />
             </div>
           </div>
