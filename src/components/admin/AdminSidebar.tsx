@@ -18,7 +18,8 @@ import {
   List,
   FileText,
   Trash2,
-  Image
+  Image,
+  Search
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +65,7 @@ const systemNavItems = [
   { title: "Crawl Phim", url: "/admin/api", icon: Database },
   { title: "Thông báo", url: "/admin/notifications", icon: Bell },
   { title: "Thùng rác", url: "/admin/trash", icon: Trash2 },
+  { title: "SEO", url: "/admin/seo", icon: Search },
   { title: "Cài đặt", url: "/admin/settings", icon: Settings },
 ];
 

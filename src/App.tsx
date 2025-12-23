@@ -26,6 +26,7 @@ import PostCategoriesManagement from "./pages/admin/PostCategoriesManagement";
 import PostEdit from "./pages/admin/PostEdit";
 import TrashManagement from "./pages/admin/TrashManagement";
 import MediaManagement from "./pages/admin/MediaManagement";
+import SeoSettings from "./pages/admin/SeoSettings";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -172,6 +173,14 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <MediaManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/seo"
+              element={
+                <ProtectedAdminRoute>
+                  <SeoSettings />
                 </ProtectedAdminRoute>
               }
             />

@@ -262,6 +262,36 @@ export type Database = {
         }
         Relationships: []
       }
+      media_seo: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          description: string | null
+          file_path: string
+          id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          description?: string | null
+          file_path: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       movie_actors: {
         Row: {
           actor_id: string
@@ -650,6 +680,30 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      seo_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_value?: string | null
           updated_at?: string
         }
         Relationships: []

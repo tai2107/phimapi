@@ -23,6 +23,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Upload, 
@@ -43,10 +51,13 @@ import {
   FolderPlus,
   ChevronRight,
   Home,
+  MoveRight,
+  Settings2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MediaFile {
   id: string;
@@ -86,6 +97,10 @@ const MediaManagement = () => {
   const [currentFolder, setCurrentFolder] = useState("");
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [targetFolder, setTargetFolder] = useState("");
+  const [showSeoDialog, setShowSeoDialog] = useState(false);
+  const [seoData, setSeoData] = useState({ alt_text: "", title: "", description: "" });
 
   // Fetch media files
   const { data: files = [], isLoading } = useQuery({
@@ -243,6 +258,98 @@ const MediaManagement = () => {
       toast({
         title: "Lỗi",
         description: "Không thể xóa: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fetch all folders for move dialog
+  const { data: allFolders = [] } = useQuery({
+    queryKey: ["all-folders"],
+    queryFn: async () => {
+      const fetchFoldersRecursive = async (path: string): Promise<string[]> => {
+        const { data, error } = await supabase.storage.from("media").list(path, { limit: 1000 });
+        if (error) return [];
+        
+        const folderNames: string[] = [];
+        for (const item of data || []) {
+          if (!item.metadata?.mimetype && item.id === null && item.name !== "trash" && item.name !== ".emptyFolderPlaceholder") {
+            const fullPath = path ? `${path}/${item.name}` : item.name;
+            folderNames.push(fullPath);
+            const subFolders = await fetchFoldersRecursive(fullPath);
+            folderNames.push(...subFolders);
+          }
+        }
+        return folderNames;
+      };
+      
+      return fetchFoldersRecursive("");
+    },
+  });
+
+  // Fetch media SEO data
+  const { data: mediaSeoData } = useQuery({
+    queryKey: ["media-seo", selectedFile?.name, currentFolder],
+    queryFn: async () => {
+      if (!selectedFile) return null;
+      const filePath = currentFolder ? `${currentFolder}/${selectedFile.name}` : selectedFile.name;
+      const { data, error } = await supabase
+        .from("media_seo")
+        .select("*")
+        .eq("file_path", filePath)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedFile,
+  });
+
+  // Move files mutation
+  const moveMutation = useMutation({
+    mutationFn: async ({ fileIds, destination }: { fileIds: string[]; destination: string }) => {
+      const filesToMove = mediaFiles.filter((f) => fileIds.includes(f.id));
+      
+      for (const file of filesToMove) {
+        const sourcePath = currentFolder ? `${currentFolder}/${file.name}` : file.name;
+        const destPath = destination ? `${destination}/${file.name}` : file.name;
+        
+        const { error } = await supabase.storage.from("media").move(sourcePath, destPath);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media-files"] });
+      toast({ title: `Đã di chuyển ${selectedIds.length} file` });
+      setSelectedIds([]);
+      setShowMoveDialog(false);
+      setTargetFolder("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể di chuyển: " + error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Save media SEO mutation
+  const saveSeoMutation = useMutation({
+    mutationFn: async (data: { file_path: string; alt_text: string; title: string; description: string }) => {
+      const { error } = await supabase
+        .from("media_seo")
+        .upsert(data, { onConflict: "file_path" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media-seo"] });
+      toast({ title: "Đã lưu thông tin SEO" });
+      setShowSeoDialog(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể lưu SEO: " + error.message,
         variant: "destructive",
       });
     },
@@ -427,9 +534,13 @@ const MediaManagement = () => {
 
       {/* Bulk actions bar */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50 flex-wrap">
           <CheckSquare className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">Đã chọn {selectedIds.length} file</span>
+          <Button variant="outline" size="sm" onClick={() => setShowMoveDialog(true)}>
+            <MoveRight className="h-4 w-4 mr-2" />
+            Di chuyển
+          </Button>
           <Button variant="outline" size="sm" onClick={handleBulkDownload} disabled={isDownloading}>
             {isDownloading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -726,6 +837,23 @@ const MediaManagement = () => {
               </div>
 
               <div className="flex gap-2 justify-end">
+                {isImage(selectedFile.metadata?.mimetype) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const filePath = currentFolder ? `${currentFolder}/${selectedFile.name}` : selectedFile.name;
+                      setSeoData({
+                        alt_text: mediaSeoData?.alt_text || "",
+                        title: mediaSeoData?.title || "",
+                        description: mediaSeoData?.description || "",
+                      });
+                      setShowSeoDialog(true);
+                    }}
+                  >
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    SEO
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => downloadFile(selectedFile.name)}>
                   <Download className="h-4 w-4 mr-2" />
                   Tải xuống
@@ -814,6 +942,140 @@ const MediaManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Move files dialog */}
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Di chuyển {selectedIds.length} file</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Thư mục đích</Label>
+              <Select value={targetFolder} onValueChange={setTargetFolder}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn thư mục đích" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__root__">/ (Thư mục gốc)</SelectItem>
+                  {allFolders
+                    .filter((f) => f !== currentFolder && !f.startsWith("trash"))
+                    .map((folder) => (
+                      <SelectItem key={folder} value={folder}>
+                        /{folder}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={() => {
+                const destination = targetFolder === "__root__" ? "" : targetFolder;
+                moveMutation.mutate({ fileIds: selectedIds, destination });
+              }}
+              disabled={!targetFolder || moveMutation.isPending}
+            >
+              {moveMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <MoveRight className="h-4 w-4 mr-2" />
+              )}
+              Di chuyển
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* SEO dialog for images */}
+      <Dialog open={showSeoDialog} onOpenChange={setShowSeoDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cài đặt SEO cho ảnh</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="seo" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="seo">SEO</TabsTrigger>
+              <TabsTrigger value="preview">Xem trước</TabsTrigger>
+            </TabsList>
+            <TabsContent value="seo" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Alt Text</Label>
+                <Input
+                  value={seoData.alt_text}
+                  onChange={(e) => setSeoData((prev) => ({ ...prev, alt_text: e.target.value }))}
+                  placeholder="Mô tả ảnh cho người khiếm thị và SEO"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Alt text giúp công cụ tìm kiếm hiểu nội dung ảnh
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Tiêu đề</Label>
+                <Input
+                  value={seoData.title}
+                  onChange={(e) => setSeoData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Tiêu đề hiển thị khi hover"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Textarea
+                  value={seoData.description}
+                  onChange={(e) => setSeoData((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="Mô tả chi tiết về ảnh"
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+            <TabsContent value="preview" className="space-y-4">
+              {selectedFile && (
+                <div className="space-y-4">
+                  <div className="border rounded-lg p-4 bg-muted/30">
+                    <p className="text-sm font-medium mb-2">Xem trước thẻ img:</p>
+                    <code className="text-xs bg-background p-2 rounded block overflow-x-auto">
+                      {`<img src="${getPublicUrl(selectedFile.name)}" alt="${seoData.alt_text}" title="${seoData.title}" />`}
+                    </code>
+                  </div>
+                  <div className="aspect-video relative bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                    <img
+                      src={getPublicUrl(selectedFile.name)}
+                      alt={seoData.alt_text}
+                      title={seoData.title}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSeoDialog(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedFile) return;
+                const filePath = currentFolder ? `${currentFolder}/${selectedFile.name}` : selectedFile.name;
+                saveSeoMutation.mutate({
+                  file_path: filePath,
+                  ...seoData,
+                });
+              }}
+              disabled={saveSeoMutation.isPending}
+            >
+              {saveSeoMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
