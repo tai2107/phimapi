@@ -47,6 +47,7 @@ const mainNavItems = [
   { title: "Bài viết", url: "/admin/posts", icon: FileText },
   { title: "Danh mục BV", url: "/admin/post-categories", icon: FolderOpen },
   { title: "Media", url: "/admin/media", icon: Image },
+  { title: "Widgets", url: "/admin/widgets", icon: LayoutDashboard },
 ];
 
 const movieManagementItems = [
@@ -66,7 +67,7 @@ const systemNavItems = [
   { title: "Thông báo", url: "/admin/notifications", icon: Bell },
   { title: "Thùng rác", url: "/admin/trash", icon: Trash2 },
   { title: "SEO", url: "/admin/seo", icon: Search },
-  { title: "Cài đặt", url: "/admin/settings", icon: Settings },
+  { title: "Cài đặt Site", url: "/admin/site-settings", icon: Settings },
 ];
 
 export function AdminSidebar() {
