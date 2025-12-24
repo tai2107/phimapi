@@ -262,6 +262,72 @@ export type Database = {
         }
         Relationships: []
       }
+      homepage_widgets: {
+        Row: {
+          category_exclude: boolean | null
+          category_ids: string[] | null
+          country_exclude: boolean | null
+          country_ids: string[] | null
+          created_at: string
+          display_order: number
+          genre_exclude: boolean | null
+          genre_ids: string[] | null
+          id: string
+          is_active: boolean
+          posts_count: number
+          sort_by: string
+          static_path: string | null
+          status_filter: string[] | null
+          title: string
+          updated_at: string
+          widget_type: string
+          year_exclude: boolean | null
+          year_ids: string[] | null
+        }
+        Insert: {
+          category_exclude?: boolean | null
+          category_ids?: string[] | null
+          country_exclude?: boolean | null
+          country_ids?: string[] | null
+          created_at?: string
+          display_order?: number
+          genre_exclude?: boolean | null
+          genre_ids?: string[] | null
+          id?: string
+          is_active?: boolean
+          posts_count?: number
+          sort_by?: string
+          static_path?: string | null
+          status_filter?: string[] | null
+          title: string
+          updated_at?: string
+          widget_type?: string
+          year_exclude?: boolean | null
+          year_ids?: string[] | null
+        }
+        Update: {
+          category_exclude?: boolean | null
+          category_ids?: string[] | null
+          country_exclude?: boolean | null
+          country_ids?: string[] | null
+          created_at?: string
+          display_order?: number
+          genre_exclude?: boolean | null
+          genre_ids?: string[] | null
+          id?: string
+          is_active?: boolean
+          posts_count?: number
+          sort_by?: string
+          static_path?: string | null
+          status_filter?: string[] | null
+          title?: string
+          updated_at?: string
+          widget_type?: string
+          year_exclude?: boolean | null
+          year_ids?: string[] | null
+        }
+        Relationships: []
+      }
       media_seo: {
         Row: {
           alt_text: string | null
@@ -703,6 +769,33 @@ export type Database = {
           created_at?: string
           id?: string
           setting_key?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_type: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_type?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_type?: string
           setting_value?: string | null
           updated_at?: string
         }

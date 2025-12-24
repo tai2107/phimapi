@@ -27,6 +27,8 @@ import PostEdit from "./pages/admin/PostEdit";
 import TrashManagement from "./pages/admin/TrashManagement";
 import MediaManagement from "./pages/admin/MediaManagement";
 import SeoSettings from "./pages/admin/SeoSettings";
+import WidgetsManagement from "./pages/admin/WidgetsManagement";
+import SiteSettings from "./pages/admin/SiteSettings";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -181,6 +183,22 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <SeoSettings />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/widgets"
+              element={
+                <ProtectedAdminRoute>
+                  <WidgetsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/site-settings"
+              element={
+                <ProtectedAdminRoute>
+                  <SiteSettings />
                 </ProtectedAdminRoute>
               }
             />
