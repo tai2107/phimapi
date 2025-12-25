@@ -43,7 +43,9 @@ import TvWatch from "./pages/TvWatch";
 import NotFound from "./pages/NotFound";
 import ContentAI from "./pages/admin/ContentAI";
 import Documentation from "./pages/admin/Documentation";
+import AdsManagement from "./pages/admin/AdsManagement";
 import { Header } from "./components/Header";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,12 +59,13 @@ const queryClient = new QueryClient({
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <TrackingScripts />
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-        <AuthProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <TrackingScripts />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+          <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
@@ -266,6 +269,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/ads"
+              element={
+                <ProtectedAdminRoute>
+                  <AdsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
               path="/admin/docs"
               element={
                 <ProtectedAdminRoute>
@@ -293,6 +304,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
   </HelmetProvider>
 );

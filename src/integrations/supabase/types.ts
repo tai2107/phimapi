@@ -50,6 +50,51 @@ export type Database = {
         }
         Relationships: []
       }
+      advertisements: {
+        Row: {
+          ad_type: string
+          content: string
+          created_at: string
+          display_order: number
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          pages: string[] | null
+          position: string
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_type?: string
+          content: string
+          created_at?: string
+          display_order?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          pages?: string[] | null
+          position?: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_type?: string
+          content?: string
+          created_at?: string
+          display_order?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          pages?: string[] | null
+          position?: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_prompt_templates: {
         Row: {
           created_at: string
@@ -576,6 +621,89 @@ export type Database = {
           },
           {
             foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movie_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          ip_hash: string
+          movie_id: string
+          rating: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_hash: string
+          movie_id: string
+          rating: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_hash?: string
+          movie_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_ratings_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movie_subtitles: {
+        Row: {
+          created_at: string
+          display_order: number
+          episode_id: string | null
+          file_type: string
+          file_url: string
+          id: string
+          label: string
+          language: string
+          movie_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          episode_id?: string | null
+          file_type?: string
+          file_url: string
+          id?: string
+          label: string
+          language?: string
+          movie_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          episode_id?: string | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          label?: string
+          language?: string
+          movie_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_subtitles_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_subtitles_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
             referencedRelation: "movies"
