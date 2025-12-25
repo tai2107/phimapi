@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Movie } from "@/lib/api";
 
 interface TaxonomyData {
   id: string;
@@ -21,107 +22,107 @@ type TaxonomyType = "danh-muc" | "the-loai" | "quoc-gia" | "nam";
 
 const ITEMS_PER_PAGE = 24;
 
-interface MovieData {
-  id: string;
-  slug: string;
-  name: string;
-  thumb_url: string | null;
-  poster_url: string | null;
-  year: number | null;
-  quality: string | null;
-  episode_current: string | null;
-}
-
 const TaxonomyList = () => {
-  const { type, slug } = useParams<{ type: TaxonomyType; slug: string }>();
+  const { type, slug } = useParams<{ type: string; slug: string }>();
   const [page, setPage] = useState(1);
 
-  const { data: taxonomy, isLoading: taxonomyLoading } = useQuery<TaxonomyData | null>({
+  const { data: taxonomy, isLoading: taxonomyLoading } = useQuery({
     queryKey: ["taxonomy", type, slug],
-    queryFn: async () => {
-      let table = "";
-      let nameColumn = "name";
-      
+    queryFn: async (): Promise<TaxonomyData | null> => {
       switch (type) {
-        case "danh-muc":
-          table = "movie_categories";
-          break;
-        case "the-loai":
-          table = "genres";
-          break;
-        case "quoc-gia":
-          table = "countries";
-          break;
-        case "nam":
-          table = "years";
-          nameColumn = "year";
-          break;
+        case "danh-muc": {
+          const { data, error } = await supabase
+            .from("movie_categories")
+            .select("*")
+            .eq("slug", slug!)
+            .is("deleted_at", null)
+            .single();
+          if (error || !data) return null;
+          return { id: data.id, name: data.name, slug: data.slug, seo_title: data.seo_title, seo_description: data.seo_description };
+        }
+        case "the-loai": {
+          const { data, error } = await supabase
+            .from("genres")
+            .select("*")
+            .eq("slug", slug!)
+            .is("deleted_at", null)
+            .single();
+          if (error || !data) return null;
+          return { id: data.id, name: data.name, slug: data.slug, seo_title: data.seo_title, seo_description: data.seo_description };
+        }
+        case "quoc-gia": {
+          const { data, error } = await supabase
+            .from("countries")
+            .select("*")
+            .eq("slug", slug!)
+            .is("deleted_at", null)
+            .single();
+          if (error || !data) return null;
+          return { id: data.id, name: data.name, slug: data.slug, seo_title: data.seo_title, seo_description: data.seo_description };
+        }
+        case "nam": {
+          const { data, error } = await supabase
+            .from("years")
+            .select("*")
+            .eq("year", parseInt(slug || "0"))
+            .is("deleted_at", null)
+            .single();
+          if (error || !data) return null;
+          return { id: data.id, name: data.year.toString(), seo_title: null, seo_description: null };
+        }
         default:
           return null;
       }
-
-      if (type === "nam") {
-        const { data, error } = await supabase
-          .from("years")
-          .select("*")
-          .eq("year", parseInt(slug || "0"))
-          .is("deleted_at", null)
-          .single();
-        if (error) return null;
-        return { ...data, name: data.year.toString() };
-      }
-
-      const { data, error } = await supabase
-        .from(table)
-        .select("*")
-        .eq("slug", slug)
-        .is("deleted_at", null)
-        .single();
-      
-      if (error) return null;
-      return data;
     },
     enabled: !!type && !!slug,
   });
 
-  const { data: moviesData, isLoading: moviesLoading } = useQuery<{ movies: MovieData[], total: number }>({
-    queryKey: ["taxonomy-movies", type, slug, page],
-    queryFn: async () => {
-      if (!taxonomy) return { movies: [] as MovieData[], total: 0 };
+  const { data: moviesData, isLoading: moviesLoading } = useQuery({
+    queryKey: ["taxonomy-movies", type, slug, page, taxonomy?.id],
+    queryFn: async (): Promise<{ movies: Movie[], total: number }> => {
+      if (!taxonomy) return { movies: [], total: 0 };
 
-      let query = supabase.from("movies").select("*", { count: "exact" });
+      let movieIds: string[] = [];
 
       switch (type) {
-        case "danh-muc":
-          const { data: categoryMovieIds } = await supabase
+        case "danh-muc": {
+          const { data } = await supabase
             .from("movie_category_map")
             .select("movie_id")
             .eq("category_id", taxonomy.id);
-          const catIds = categoryMovieIds?.map(m => m.movie_id) || [];
-          if (catIds.length === 0) return { movies: [], total: 0 };
-          query = query.in("id", catIds);
+          movieIds = data?.map(m => m.movie_id) || [];
+          if (movieIds.length === 0) return { movies: [], total: 0 };
           break;
-        case "the-loai":
-          const { data: genreMovieIds } = await supabase
+        }
+        case "the-loai": {
+          const { data } = await supabase
             .from("movie_genres")
             .select("movie_id")
             .eq("genre_id", taxonomy.id);
-          const genreIds = genreMovieIds?.map(m => m.movie_id) || [];
-          if (genreIds.length === 0) return { movies: [], total: 0 };
-          query = query.in("id", genreIds);
+          movieIds = data?.map(m => m.movie_id) || [];
+          if (movieIds.length === 0) return { movies: [], total: 0 };
           break;
-        case "quoc-gia":
-          const { data: countryMovieIds } = await supabase
+        }
+        case "quoc-gia": {
+          const { data } = await supabase
             .from("movie_countries")
             .select("movie_id")
             .eq("country_id", taxonomy.id);
-          const countryIds = countryMovieIds?.map(m => m.movie_id) || [];
-          if (countryIds.length === 0) return { movies: [], total: 0 };
-          query = query.in("id", countryIds);
+          movieIds = data?.map(m => m.movie_id) || [];
+          if (movieIds.length === 0) return { movies: [], total: 0 };
           break;
+        }
         case "nam":
-          query = query.eq("year", parseInt(slug || "0"));
+          // No need to get IDs, filter directly
           break;
+      }
+
+      let query = supabase.from("movies").select("*", { count: "exact" });
+      
+      if (type === "nam") {
+        query = query.eq("year", parseInt(slug || "0"));
+      } else {
+        query = query.in("id", movieIds);
       }
 
       const { data, error, count } = await query
@@ -130,7 +131,29 @@ const TaxonomyList = () => {
         .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
 
       if (error) return { movies: [], total: 0 };
-      return { movies: data || [], total: count || 0 };
+      
+      // Transform to Movie type
+      const movies: Movie[] = (data || []).map(m => ({
+        _id: m.id,
+        name: m.name,
+        slug: m.slug,
+        origin_name: m.origin_name || "",
+        poster_url: m.poster_url || "",
+        thumb_url: m.thumb_url || "",
+        year: m.year || 0,
+        type: m.type,
+        quality: m.quality || "",
+        lang: m.lang || "",
+        time: m.time || "",
+        episode_current: m.episode_current || "",
+        episode_total: m.episode_total || "",
+        view: m.view_count || 0,
+        content: m.content || "",
+        category: [],
+        country: [],
+      }));
+
+      return { movies, total: count || 0 };
     },
     enabled: !!taxonomy,
   });
@@ -235,16 +258,11 @@ const TaxonomyList = () => {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {moviesData?.movies.map((movie) => (
+              {moviesData?.movies.map((movie, index) => (
                 <MovieCard
-                  key={movie.id}
-                  slug={movie.slug}
-                  name={movie.name}
-                  thumbUrl={movie.thumb_url || movie.poster_url || ""}
-                  posterUrl={movie.poster_url || ""}
-                  year={movie.year || 0}
-                  quality={movie.quality || ""}
-                  episodeCurrent={movie.episode_current || ""}
+                  key={movie._id}
+                  movie={movie}
+                  index={index}
                 />
               ))}
             </div>

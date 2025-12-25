@@ -4,6 +4,7 @@ import {
   Film, 
   FolderOpen,
   Globe,
+  Tv,
   Users,
   Settings,
   BarChart3,
@@ -52,12 +53,18 @@ const mainNavItems = [
 
 const movieManagementItems = [
   { title: "Danh sách phim", url: "/admin/movies", icon: List },
+  { title: "Danh mục phim", url: "/admin/movie-categories", icon: FolderOpen },
   { title: "Thể loại", url: "/admin/genres", icon: FolderOpen },
   { title: "Quốc gia", url: "/admin/countries", icon: Globe },
   { title: "Năm", url: "/admin/years", icon: Calendar },
   { title: "Tags", url: "/admin/tags", icon: Tag },
   { title: "Đạo diễn", url: "/admin/directors", icon: Clapperboard },
   { title: "Diễn viên", url: "/admin/actors", icon: UserCircle },
+];
+
+const tvManagementItems = [
+  { title: "Danh sách kênh", url: "/admin/tv-channels", icon: List },
+  { title: "Danh mục kênh", url: "/admin/tv-channel-categories", icon: FolderOpen },
 ];
 
 const systemNavItems = [
@@ -79,6 +86,9 @@ export function AdminSidebar() {
   
   const [movieManagementOpen, setMovieManagementOpen] = useState(
     movieManagementItems.some(item => location.pathname === item.url)
+  );
+  const [tvManagementOpen, setTvManagementOpen] = useState(
+    tvManagementItems.some(item => location.pathname === item.url)
   );
 
   const isActive = (path: string) => location.pathname === path;
@@ -153,6 +163,49 @@ export function AdminSidebar() {
               <SidebarGroupContent className="pl-4 mt-1">
                 <SidebarMenu>
                   {movieManagementItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={isActive(item.url)}
+                        tooltip={item.title}
+                      >
+                        <NavLink 
+                          to={item.url} 
+                          end 
+                          className={({ isActive }) => 
+                            `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-muted/50 text-sm ${isActive ? "bg-primary/10 text-primary" : ""}`
+                          }
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!isCollapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        {/* TV Management Collapsible */}
+        <SidebarGroup className="mt-2">
+          <Collapsible open={tvManagementOpen} onOpenChange={setTvManagementOpen}>
+            <CollapsibleTrigger className="w-full">
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg transition-colors hover:bg-muted/50 cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <Tv className="h-5 w-5" />
+                  {!isCollapsed && <span className="text-sm font-medium">Quản lý TV</span>}
+                </div>
+                {!isCollapsed && (
+                  <ChevronDown className={`h-4 w-4 transition-transform ${tvManagementOpen ? "rotate-180" : ""}`} />
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent className="pl-4 mt-1">
+                <SidebarMenu>
+                  {tvManagementItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton 
                         asChild 
