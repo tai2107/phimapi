@@ -44,7 +44,7 @@ export default function SiteSettings() {
 
   // Update settings when data is loaded
   useEffect(() => {
-    if (siteSettings) {
+    if (siteSettings && Array.isArray(siteSettings)) {
       const settingsMap: Record<string, string> = {};
       siteSettings.forEach(s => {
         settingsMap[s.setting_key] = s.setting_value || "";
