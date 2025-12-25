@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save, Upload, Image, Code, FileText } from "lucide-react";
+import { Save, Upload, Image, Code, FileText, Settings } from "lucide-react";
 import MediaPicker from "@/components/admin/MediaPicker";
 
 interface SiteSetting {
@@ -23,6 +23,8 @@ interface SiteSetting {
 export default function SiteSettings() {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<Record<string, string>>({
+    site_url: "",
+    site_name: "",
     logo_url: "",
     favicon_url: "",
     head_html: "",
@@ -103,19 +105,56 @@ export default function SiteSettings() {
         </Button>
       </div>
 
-      <Tabs defaultValue="head" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="general">
+            <Settings className="mr-2 h-4 w-4" />
+            Cài đặt chung
+          </TabsTrigger>
           <TabsTrigger value="head">
             <Code className="mr-2 h-4 w-4" />
-            Phần đầu trang (Head)
+            Head HTML
           </TabsTrigger>
           <TabsTrigger value="footer">
             <FileText className="mr-2 h-4 w-4" />
-            Phần chân trang (Footer)
+            Footer HTML
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="head" className="space-y-6">
+        <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>URL Website</CardTitle>
+              <CardDescription>
+                URL chính của website, được sử dụng cho sitemap, canonical URL và SEO.
+                Ví dụ: https://example.com (không có dấu / ở cuối)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                value={settings.site_url}
+                onChange={(e) => setSettings({ ...settings, site_url: e.target.value })}
+                placeholder="https://example.com"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Tên Website</CardTitle>
+              <CardDescription>
+                Tên website hiển thị trong title và meta tags
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                value={settings.site_name}
+                onChange={(e) => setSettings({ ...settings, site_name: e.target.value })}
+                placeholder="Tên website của bạn"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Logo</CardTitle>
@@ -189,6 +228,9 @@ export default function SiteSettings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="head" className="space-y-6">
 
           <Card>
             <CardHeader>

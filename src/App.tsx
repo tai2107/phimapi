@@ -29,6 +29,7 @@ import PostEdit from "./pages/admin/PostEdit";
 import TrashManagement from "./pages/admin/TrashManagement";
 import MediaManagement from "./pages/admin/MediaManagement";
 import SeoSettings from "./pages/admin/SeoSettings";
+import SitemapManagement from "./pages/admin/SitemapManagement";
 import WidgetsManagement from "./pages/admin/WidgetsManagement";
 import SiteSettings from "./pages/admin/SiteSettings";
 import MovieCategoriesManagement from "./pages/admin/MovieCategoriesManagement";
@@ -194,6 +195,14 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <SeoSettings />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/sitemap"
+              element={
+                <ProtectedAdminRoute>
+                  <SitemapManagement />
                 </ProtectedAdminRoute>
               }
             />
