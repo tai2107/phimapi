@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { 
@@ -6,8 +6,6 @@ import {
   ArrowLeft, 
   Calendar, 
   Clock, 
-  Star,
-  Users,
   Film,
   Globe,
   Tag,
@@ -17,6 +15,7 @@ import {
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import VideoPlayer from "@/components/VideoPlayer";
+import { RelatedMovies } from "@/components/RelatedMovies";
 import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
 
 const MovieDetail = () => {
@@ -31,6 +30,24 @@ const MovieDetail = () => {
     queryFn: () => fetchMovieDetail(slug!),
     enabled: !!slug,
   });
+
+  // Auto-switch to next source on error
+  const handlePlayerError = useCallback(() => {
+    if (!data?.episodes) return;
+    
+    const episodes = data.episodes;
+    const currentServer = episodes[selectedServer];
+    const hasNextEpisode = currentServer?.server_data?.length > selectedEpisode + 1;
+    const hasNextServer = episodes.length > selectedServer + 1;
+    
+    // Try next server first
+    if (hasNextServer) {
+      setSelectedServer(prev => prev + 1);
+      setSelectedEpisode(0);
+    } else if (hasNextEpisode) {
+      // Or stay on same server but try again
+    }
+  }, [data?.episodes, selectedServer, selectedEpisode]);
 
   if (isLoading) {
     return (
@@ -66,7 +83,11 @@ const MovieDetail = () => {
   const movie = data.movie;
   const episodes = data.episodes || movie.episodes || [];
   const currentServer = episodes[selectedServer];
+  const movieId = (movie as any).id || (movie as any)._id;
   const currentEpisode = currentServer?.server_data?.[selectedEpisode];
+  
+  // Get genre and category IDs for related movies
+  const genreIds = movie.category?.map((c: any) => c.id || c.slug) || [];
 
   return (
     <Layout>
@@ -79,13 +100,39 @@ const MovieDetail = () => {
                 linkEmbed={currentEpisode.link_embed}
                 linkM3u8={currentEpisode.link_m3u8}
                 linkMp4={currentEpisode.link_mp4}
+                onError={handlePlayerError}
               />
             </div>
+            
+            {/* Server/Source Selector when playing */}
+            {episodes.length > 1 && (
+              <div className="mt-4 px-4 sm:px-0">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Nguồn phát:</h3>
+                <div className="flex flex-wrap gap-2">
+                  {episodes.map((server: any, index: number) => (
+                    <Button
+                      key={index}
+                      variant={selectedServer === index ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedServer(index);
+                        setSelectedEpisode(0);
+                      }}
+                    >
+                      {server.server_name}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Nếu nguồn này không hoạt động, vui lòng chọn nguồn khác
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Hero Banner */}
+      {/* Hero Banner - Only show when not playing */}
       {!isPlaying && (
         <div className="relative h-[40vh] sm:h-[50vh] overflow-hidden -mt-14 sm:-mt-16">
           <img
@@ -102,14 +149,16 @@ const MovieDetail = () => {
         {/* Movie Info */}
         <div className={`relative ${isPlaying ? "pt-6" : "-mt-32 sm:-mt-40"}`}>
           <div className="flex flex-col gap-6 sm:flex-row">
-            {/* Poster */}
-            <div className="mx-auto w-40 flex-shrink-0 sm:mx-0 sm:w-48">
-              <img
-                src={getPosterUrl(movie.poster_url || movie.thumb_url)}
-                alt={movie.name}
-                className="w-full rounded-lg shadow-lg"
-              />
-            </div>
+            {/* Poster - Hide when playing */}
+            {!isPlaying && (
+              <div className="mx-auto w-32 flex-shrink-0 sm:mx-0 sm:w-40 md:w-48">
+                <img
+                  src={getPosterUrl(movie.poster_url || movie.thumb_url)}
+                  alt={movie.name}
+                  className="w-full rounded-lg shadow-lg aspect-[2/3] object-cover"
+                />
+              </div>
+            )}
 
             {/* Info */}
             <div className="flex-1">
@@ -168,7 +217,7 @@ const MovieDetail = () => {
               {movie.category && movie.category.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Tag className="h-4 w-4 text-muted-foreground" />
-                  {movie.category.map((cat) => (
+                  {movie.category.map((cat: any) => (
                     <span
                       key={cat.slug}
                       className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
@@ -183,7 +232,7 @@ const MovieDetail = () => {
               {movie.country && movie.country.length > 0 && (
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <Globe className="h-4 w-4 text-muted-foreground" />
-                  {movie.country.map((c) => (
+                  {movie.country.map((c: any) => (
                     <span
                       key={c.slug}
                       className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
@@ -245,7 +294,7 @@ const MovieDetail = () => {
               {/* Server tabs */}
               {episodes.length > 1 && (
                 <div className="mb-4 flex flex-wrap gap-2">
-                  {episodes.map((server, index) => (
+                  {episodes.map((server: any, index: number) => (
                     <button
                       key={index}
                       onClick={() => {
@@ -266,7 +315,7 @@ const MovieDetail = () => {
 
               {/* Episode list */}
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
-                {currentServer?.server_data?.map((ep, index) => (
+                {currentServer?.server_data?.map((ep: any, index: number) => (
                   <button
                     key={index}
                     onClick={() => {
@@ -286,30 +335,12 @@ const MovieDetail = () => {
             </div>
           )}
 
-          {/* Cast & Crew */}
-          {(movie.actor?.length > 0 || movie.director?.length > 0) && (
-            <div className="mt-6 rounded-lg bg-card p-4">
-              <h2 className="mb-3 text-lg font-semibold text-foreground">Diễn viên & Đạo diễn</h2>
-              
-              {movie.director?.length > 0 && (
-                <div className="mb-3">
-                  <span className="text-sm font-medium text-foreground">Đạo diễn: </span>
-                  <span className="text-sm text-muted-foreground">
-                    {movie.director.join(", ")}
-                  </span>
-                </div>
-              )}
-              
-              {movie.actor?.length > 0 && (
-                <div>
-                  <span className="text-sm font-medium text-foreground">Diễn viên: </span>
-                  <span className="text-sm text-muted-foreground">
-                    {movie.actor.join(", ")}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Related Movies */}
+          <RelatedMovies 
+            movieId={movieId} 
+            genreIds={genreIds}
+            currentSlug={slug}
+          />
         </div>
       </div>
     </Layout>

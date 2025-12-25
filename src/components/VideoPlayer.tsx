@@ -1,16 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 
 interface VideoPlayerProps {
   linkEmbed?: string;
   linkM3u8?: string;
   linkMp4?: string;
+  onError?: () => void;
 }
 
-const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4 }: VideoPlayerProps) => {
+const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4, onError }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleError = useCallback(() => {
+    if (onError) {
+      onError();
+    }
+  }, [onError]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -45,16 +52,18 @@ const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4 }: VideoPlayerProps) => {
             if (data.fatal) {
               switch (data.type) {
                 case Hls.ErrorTypes.NETWORK_ERROR:
-                  setError("Lỗi mạng - không thể tải video. Vui lòng thử lại sau.");
-                  // Try to recover
+                  setError("Lỗi mạng - không thể tải video. Đang chuyển nguồn...");
                   hls?.startLoad();
+                  handleError();
                   break;
                 case Hls.ErrorTypes.MEDIA_ERROR:
                   setError("Lỗi media - định dạng không được hỗ trợ.");
                   hls?.recoverMediaError();
+                  handleError();
                   break;
                 default:
-                  setError("Không thể phát video. Link có thể đã hết hạn hoặc bị chặn.");
+                  setError("Không thể phát video. Đang chuyển nguồn khác...");
+                  handleError();
                   break;
               }
               setIsLoading(false);
@@ -70,6 +79,7 @@ const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4 }: VideoPlayerProps) => {
           video.addEventListener("error", () => {
             setError("Không thể phát video HLS.");
             setIsLoading(false);
+            handleError();
           });
         }
       } else if (linkMp4) {
@@ -79,8 +89,9 @@ const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4 }: VideoPlayerProps) => {
           video.play().catch(() => {});
         });
         video.addEventListener("error", () => {
-          setError("Không thể phát video MP4. Link có thể đã hết hạn hoặc bị chặn.");
+          setError("Không thể phát video MP4. Đang chuyển nguồn khác...");
           setIsLoading(false);
+          handleError();
         });
       }
     };
@@ -92,7 +103,7 @@ const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4 }: VideoPlayerProps) => {
         hls.destroy();
       }
     };
-  }, [linkM3u8, linkMp4]);
+  }, [linkM3u8, linkMp4, handleError]);
 
   // If only embed link is available, use iframe
   if (!linkM3u8 && !linkMp4 && linkEmbed) {

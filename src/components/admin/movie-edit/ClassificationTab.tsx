@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -159,110 +158,6 @@ const ClassificationTab = ({ formData, setFormData, onSave, onCancel, isSaving }
                   </Badge>
                 ) : null;
               })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Directors */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Đạo diễn</CardTitle>
-          <CardDescription>Nhập tên đạo diễn, phân cách bằng dấu phẩy</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Input
-            value={formData.directors || ""}
-            onChange={(e) => updateField("directors", e.target.value)}
-            placeholder="James Cameron, Steven Spielberg"
-          />
-          {formData.directors && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {formData.directors.split(",").map((director: string, idx: number) => (
-                director.trim() && (
-                  <Badge key={idx} variant="outline">
-                    {director.trim()}
-                  </Badge>
-                )
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Actors */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Diễn viên</CardTitle>
-          <CardDescription>Nhập tên diễn viên, phân cách bằng dấu phẩy</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Input
-            value={formData.actors || ""}
-            onChange={(e) => updateField("actors", e.target.value)}
-            placeholder="Sam Worthington, Zoe Saldaña, Sigourney Weaver, Stephen Lang"
-          />
-          {formData.actors && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {formData.actors.split(",").map((actor: string, idx: number) => (
-                actor.trim() && (
-                  <Badge key={idx} variant="outline">
-                    {actor.trim()}
-                  </Badge>
-                )
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tags */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tags</CardTitle>
-          <CardDescription>Nhập tags, phân cách bằng dấu phẩy</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Input
-            value={formData.tags || ""}
-            onChange={(e) => updateField("tags", e.target.value)}
-            placeholder="avatar, sci-fi, action, 3d"
-          />
-          {formData.tags && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {formData.tags.split(",").map((tag: string, idx: number) => (
-                tag.trim() && (
-                  <Badge key={idx} variant="secondary">
-                    {tag.trim()}
-                  </Badge>
-                )
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Studios */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Studios</CardTitle>
-          <CardDescription>Nhập tên studios sản xuất, phân cách bằng dấu phẩy</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Input
-            value={formData.studios || ""}
-            onChange={(e) => updateField("studios", e.target.value)}
-            placeholder="20th Century Studios, Lightstorm Entertainment"
-          />
-          {formData.studios && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {formData.studios.split(",").map((studio: string, idx: number) => (
-                studio.trim() && (
-                  <Badge key={idx} variant="outline">
-                    {studio.trim()}
-                  </Badge>
-                )
-              ))}
             </div>
           )}
         </CardContent>

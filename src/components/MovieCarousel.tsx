@@ -28,13 +28,13 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
   if (loading) {
     return (
       <section className="py-4">
-        <h2 className="mb-4 text-xl font-bold text-foreground">{title}</h2>
-        <div className="flex gap-3 overflow-hidden">
+        <h2 className="mb-4 text-lg sm:text-xl font-bold text-foreground">{title}</h2>
+        <div className="flex gap-2 sm:gap-3 overflow-hidden">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="flex-shrink-0 w-[140px] sm:w-[160px]">
+            <div key={i} className="flex-shrink-0 w-[100px] sm:w-[140px] md:w-[160px]">
               <div className="aspect-[2/3] rounded-lg bg-muted animate-pulse" />
-              <div className="mt-2 h-4 w-3/4 rounded bg-muted animate-pulse" />
-              <div className="mt-1 h-3 w-1/2 rounded bg-muted animate-pulse" />
+              <div className="mt-2 h-3 sm:h-4 w-3/4 rounded bg-muted animate-pulse" />
+              <div className="mt-1 h-2 sm:h-3 w-1/2 rounded bg-muted animate-pulse" />
             </div>
           ))}
         </div>
@@ -46,13 +46,13 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
 
   return (
     <section className="py-4 group/section">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-foreground">{title}</h2>
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">{title}</h2>
           {staticPath && (
             <Link 
               to={staticPath} 
-              className="text-sm text-primary hover:underline"
+              className="text-xs sm:text-sm text-primary hover:underline"
             >
               Xem tất cả →
             </Link>
@@ -80,13 +80,13 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
         </div>
       </div>
 
-      {/* Movie grid - scrollable */}
+      {/* Movie grid - scrollable with responsive sizing */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 sm:mx-0 sm:px-0"
+        className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 sm:mx-0 sm:px-0"
       >
         {movies.map((movie, index) => (
-          <div key={movie._id} className="flex-shrink-0 w-[140px] sm:w-[160px]">
+          <div key={movie._id} className="flex-shrink-0 w-[100px] sm:w-[130px] md:w-[150px] lg:w-[160px]">
             <MovieCard movie={movie} index={index} />
           </div>
         ))}
