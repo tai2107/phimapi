@@ -229,14 +229,14 @@ const SubtitlesTab = ({ movieId }: SubtitlesTabProps) => {
                   <div className="space-y-2">
                     <Label>Tập phim (tùy chọn)</Label>
                     <Select
-                      value={formData.episode_id}
-                      onValueChange={(value) => setFormData({ ...formData, episode_id: value })}
+                      value={formData.episode_id || "all"}
+                      onValueChange={(value) => setFormData({ ...formData, episode_id: value === "all" ? "" : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Áp dụng cho tất cả tập" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Tất cả tập</SelectItem>
+                        <SelectItem value="all">Tất cả tập</SelectItem>
                         {episodes.map((ep) => (
                           <SelectItem key={ep.id} value={ep.id}>
                             {ep.name}
