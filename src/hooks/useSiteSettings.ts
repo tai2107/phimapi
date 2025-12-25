@@ -6,6 +6,8 @@ export interface SiteSettings {
   site_name: string | null;
   logo_url: string | null;
   favicon_url: string | null;
+  google_analytics_id: string | null;
+  google_tag_manager_id: string | null;
   head_html: string | null;
   footer_html: string | null;
 }
@@ -25,6 +27,8 @@ export function useSiteSettings() {
         site_name: null,
         logo_url: null,
         favicon_url: null,
+        google_analytics_id: null,
+        google_tag_manager_id: null,
         head_html: null,
         footer_html: null,
       };
