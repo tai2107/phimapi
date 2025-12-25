@@ -156,10 +156,79 @@ export default function Documentation() {
                   <div className="space-y-3">
                     <h4 className="font-medium">IndexNow là gì?</h4>
                     <p className="text-muted-foreground">
-                      IndexNow là giao thức cho phép website thông báo ngay lập tức cho search engines 
-                      (Bing, Yandex, Naver...) khi có nội dung mới hoặc cập nhật. Giúp nội dung được 
-                      index nhanh hơn so với việc chờ crawler tự phát hiện.
+                      IndexNow là một <strong>giao thức mở</strong> (open protocol) cho phép website thông báo ngay lập tức 
+                      cho search engines khi có nội dung mới. Đây KHÔNG phải là dịch vụ của riêng Google hay Bing - 
+                      mà là một tiêu chuẩn mà các search engines có thể chọn hỗ trợ hoặc không.
                     </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div className="flex items-start gap-2">
+                      <Shield className="h-4 w-4 text-blue-500 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-blue-500">⚠️ Hiểu đúng về IndexNow Key:</p>
+                        <ul className="list-disc list-inside mt-2 text-muted-foreground space-y-1">
+                          <li><strong>BẠN tự tạo key</strong> - Không phải lấy từ Google hay Bing!</li>
+                          <li>Key là một chuỗi ngẫu nhiên do bạn chọn (như mật khẩu)</li>
+                          <li>Bạn tạo file xác thực <code className="bg-muted px-1 rounded">[key].txt</code> trên domain của mình</li>
+                          <li>Khi ping, Bing/Yandex sẽ kiểm tra file này để xác nhận bạn sở hữu domain</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-yellow-500">🚨 Google KHÔNG hỗ trợ IndexNow!</p>
+                        <p className="mt-1 text-muted-foreground">
+                          Google sử dụng các phương pháp riêng:
+                        </p>
+                        <ul className="list-disc list-inside mt-1 text-muted-foreground">
+                          <li><strong>Google Indexing API</strong> - Cần Google Search Console + OAuth (phức tạp)</li>
+                          <li><strong>Sitemap Ping</strong> - Đơn giản hơn, hệ thống này sử dụng cách này</li>
+                          <li><strong>Crawler tự động</strong> - Google bot sẽ tự tìm nội dung qua sitemap</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium">So sánh với WordPress Plugin:</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Tính năng</th>
+                            <th className="text-left p-2">WordPress (RankMath/Yoast)</th>
+                            <th className="text-left p-2">Hệ thống này</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-muted-foreground">
+                          <tr className="border-b">
+                            <td className="p-2">Tạo Key</td>
+                            <td className="p-2">Plugin tự tạo cho bạn</td>
+                            <td className="p-2">Bạn tự tạo/nhập</td>
+                          </tr>
+                          <tr className="border-b">
+                            <td className="p-2">File xác thực</td>
+                            <td className="p-2">Plugin tự tạo file .txt</td>
+                            <td className="p-2">Edge Function serve file</td>
+                          </tr>
+                          <tr className="border-b">
+                            <td className="p-2">Bing/Yandex</td>
+                            <td className="p-2">✅ Hỗ trợ</td>
+                            <td className="p-2">✅ Hỗ trợ</td>
+                          </tr>
+                          <tr>
+                            <td className="p-2">Google</td>
+                            <td className="p-2">❌ Không hỗ trợ IndexNow</td>
+                            <td className="p-2">Dùng Sitemap Ping</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -175,18 +244,26 @@ export default function Documentation() {
                         </ul>
                       </li>
                       <li>
-                        <strong>Xác thực Key:</strong>
+                        <strong>Tạo file xác thực trên domain:</strong>
                         <ul className="list-disc list-inside ml-4 mt-1">
-                          <li>Hệ thống tự động tạo file xác thực tại <code>[key].txt</code></li>
-                          <li>File này được serve qua Edge Function</li>
+                          <li>Tạo file <code className="bg-muted px-1 rounded">[key].txt</code> tại root domain</li>
+                          <li>Nội dung file chỉ chứa key (không có gì khác)</li>
+                          <li>Ví dụ: <code className="bg-muted px-1 rounded">https://domain.com/abc123def456.txt</code></li>
+                          <li>File phải trả về status 200 và content-type text/plain</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Kiểm tra xác thực:</strong>
+                        <ul className="list-disc list-inside ml-4 mt-1">
                           <li>Nhấn <strong>Kiểm tra xác thực</strong> để verify</li>
+                          <li>Nếu lỗi, kiểm tra lại file xác thực đã tạo đúng chưa</li>
                         </ul>
                       </li>
                       <li>
                         <strong>Tự động Index:</strong>
                         <ul className="list-disc list-inside ml-4 mt-1">
-                          <li>Khi thêm/sửa phim → tự động ping IndexNow</li>
-                          <li>Khi đăng bài viết mới → tự động ping IndexNow</li>
+                          <li>Khi thêm/sửa phim → tự động ping Bing/Yandex + Google Sitemap</li>
+                          <li>Khi đăng bài viết mới → tự động ping</li>
                           <li>Có thể ping thủ công nhiều URL cùng lúc</li>
                         </ul>
                       </li>
@@ -197,11 +274,11 @@ export default function Documentation() {
                     <div className="flex items-start gap-2">
                       <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
                       <div className="text-sm">
-                        <p className="font-medium text-green-500">Search Engines hỗ trợ:</p>
+                        <p className="font-medium text-green-500">Search Engines được ping:</p>
                         <ul className="list-disc list-inside mt-1 text-muted-foreground">
-                          <li><strong>Bing</strong> - Hỗ trợ IndexNow trực tiếp</li>
-                          <li><strong>Yandex</strong> - Hỗ trợ IndexNow</li>
-                          <li><strong>Google</strong> - Ping sitemap (không dùng IndexNow)</li>
+                          <li><strong>Bing</strong> - IndexNow API (hỗ trợ chính thức)</li>
+                          <li><strong>Yandex</strong> - IndexNow API (hỗ trợ chính thức)</li>
+                          <li><strong>Google</strong> - Sitemap Ping (phương pháp thay thế)</li>
                         </ul>
                       </div>
                     </div>
