@@ -202,20 +202,9 @@ const ApiCrawl = () => {
       let isUpdate = false;
 
       if (existingMovie) {
-        // Movie exists - only update episode info, keep other properties
+        // Movie exists - keep ALL movie info unchanged, only add new episodes
         movieId = existingMovie.id;
         isUpdate = true;
-        
-        // Only update episode-related fields
-        const { error: updateError } = await supabase
-          .from("movies")
-          .update({
-            episode_current: movie.episode_current,
-            episode_total: movie.episode_total,
-          })
-          .eq("id", existingMovie.id);
-
-        if (updateError) throw updateError;
       } else {
         // Insert new movie
         const { data: newMovie, error: insertError } = await supabase
@@ -377,53 +366,50 @@ const ApiCrawl = () => {
         }
       }
 
-      // Process episodes - only delete episodes from the same source, keep episodes from other sources
+      // Process episodes - only add NEW episodes, keep existing episodes unchanged
       if (movieData.episodes && movieData.episodes.length > 0) {
         // Get source prefix to identify which API source the episodes came from
         const sourcePrefix = apiSource === "phimapi" ? "[PhimAPI]" : "[NguonC]";
         
-        // Only delete episodes from the current source (matching prefix)
-        // This preserves episodes from other sources
+        // Get existing episodes for this movie to check for duplicates
         const { data: existingEpisodes } = await supabase
           .from("episodes")
-          .select("id, server_name")
+          .select("slug, server_name")
           .eq("movie_id", movieId);
         
-        if (existingEpisodes) {
-          const episodesToDelete = existingEpisodes
-            .filter(ep => ep.server_name.startsWith(sourcePrefix))
-            .map(ep => ep.id);
-          
-          if (episodesToDelete.length > 0) {
-            await supabase
-              .from("episodes")
-              .delete()
-              .in("id", episodesToDelete);
-          }
-        }
+        // Create a set of existing episode keys for fast lookup
+        const existingEpisodeKeys = new Set(
+          existingEpisodes?.map(ep => `${ep.server_name}|${ep.slug}`) || []
+        );
         
-        const allEpisodes: any[] = [];
+        const newEpisodes: any[] = [];
         for (const server of movieData.episodes) {
           // Add source prefix to server_name to identify the source
           const serverNameWithSource = `${sourcePrefix} ${server.server_name}`;
           for (const ep of server.server_data) {
-            allEpisodes.push({
-              movie_id: movieId,
-              server_name: serverNameWithSource,
-              name: ep.name,
-              slug: ep.slug,
-              filename: ep.filename,
-              link_embed: ep.link_embed,
-              link_m3u8: ep.link_m3u8,
-            });
+            const episodeKey = `${serverNameWithSource}|${ep.slug}`;
+            // Only add if this episode doesn't already exist
+            if (!existingEpisodeKeys.has(episodeKey)) {
+              newEpisodes.push({
+                movie_id: movieId,
+                server_name: serverNameWithSource,
+                name: ep.name,
+                slug: ep.slug,
+                filename: ep.filename,
+                link_embed: ep.link_embed,
+                link_m3u8: ep.link_m3u8,
+              });
+            }
           }
         }
         
-        // Batch insert in chunks of 100
-        const chunkSize = 100;
-        for (let i = 0; i < allEpisodes.length; i += chunkSize) {
-          const chunk = allEpisodes.slice(i, i + chunkSize);
-          await supabase.from("episodes").insert(chunk);
+        // Batch insert only new episodes in chunks of 100
+        if (newEpisodes.length > 0) {
+          const chunkSize = 100;
+          for (let i = 0; i < newEpisodes.length; i += chunkSize) {
+            const chunk = newEpisodes.slice(i, i + chunkSize);
+            await supabase.from("episodes").insert(chunk);
+          }
         }
       }
 
