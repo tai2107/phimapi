@@ -1,13 +1,18 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RichTextEditor from "./RichTextEditor";
 import ImageSelector from "./ImageSelector";
 import SEOPreview, { CharacterCounter } from "./SEOPreview";
-import { Save, X, Code } from "lucide-react";
+import { Save, X, Code, Sparkles, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface MovieInfoTabProps {
   formData: any;
@@ -17,7 +22,66 @@ interface MovieInfoTabProps {
   isSaving: boolean;
 }
 
+interface PromptTemplate {
+  id: string;
+  name: string;
+  prompt_content: string;
+  is_default: boolean | null;
+}
+
+interface AISettings {
+  openai_api_key: string;
+  openai_model: string;
+  openai_temperature: string;
+}
+
 const MovieInfoTab = ({ formData, setFormData, onSave, onCancel, isSaving }: MovieInfoTabProps) => {
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Fetch prompt templates
+  const { data: templates } = useQuery({
+    queryKey: ["ai-prompt-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_prompt_templates")
+        .select("*")
+        .order("is_default", { ascending: false });
+      if (error) throw error;
+      return data as PromptTemplate[];
+    },
+  });
+
+  // Fetch AI settings
+  const { data: aiSettings } = useQuery({
+    queryKey: ["ai-settings-for-movie"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("*")
+        .in("setting_key", ["openai_api_key", "openai_model", "openai_temperature"]);
+      if (error) throw error;
+      
+      const settings: AISettings = {
+        openai_api_key: "",
+        openai_model: "gpt-4o-mini",
+        openai_temperature: "0.7",
+      };
+      data?.forEach((s: any) => {
+        if (s.setting_key === "openai_api_key") settings.openai_api_key = s.setting_value || "";
+        if (s.setting_key === "openai_model") settings.openai_model = s.setting_value || "gpt-4o-mini";
+        if (s.setting_key === "openai_temperature") settings.openai_temperature = s.setting_value || "0.7";
+      });
+      return settings;
+    },
+  });
+
+  // Set default template when templates are loaded
+  if (templates && templates.length > 0 && !selectedTemplateId) {
+    const defaultTemplate = templates.find(t => t.is_default) || templates[0];
+    setSelectedTemplateId(defaultTemplate.id);
+  }
+
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
@@ -48,6 +112,61 @@ const MovieInfoTab = ({ formData, setFormData, onSave, onCancel, isSaving }: Mov
     };
     
     updateField("schema_json", JSON.stringify(schema, null, 2));
+  };
+
+  const handleAutoContent = async () => {
+    if (!selectedTemplateId) {
+      toast.error("Vui lòng chọn một prompt template");
+      return;
+    }
+
+    if (!aiSettings?.openai_api_key) {
+      toast.error("Vui lòng cấu hình API Key trong trang Content AI");
+      return;
+    }
+
+    const selectedTemplate = templates?.find(t => t.id === selectedTemplateId);
+    if (!selectedTemplate) {
+      toast.error("Không tìm thấy template");
+      return;
+    }
+
+    if (!formData.name?.trim()) {
+      toast.error("Vui lòng nhập tên phim trước");
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-content", {
+        body: {
+          prompt: selectedTemplate.prompt_content,
+          movieTitle: formData.name,
+          movieDescription: formData.origin_name || formData.seo_description || "",
+          apiKey: aiSettings.openai_api_key,
+          model: aiSettings.openai_model,
+          temperature: aiSettings.openai_temperature,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data?.content) {
+        updateField("content", data.content);
+        toast.success("Nội dung đã được tạo thành công!");
+      }
+    } catch (error: any) {
+      console.error("Error generating content:", error);
+      toast.error(error.message || "Lỗi khi tạo nội dung");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -137,8 +256,47 @@ const MovieInfoTab = ({ formData, setFormData, onSave, onCancel, isSaving }: Mov
       {/* Content */}
       <Card>
         <CardHeader>
-          <CardTitle>Nội dung phim</CardTitle>
-          <CardDescription>Mô tả chi tiết về phim</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Nội dung phim</CardTitle>
+              <CardDescription>Mô tả chi tiết về phim</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              {templates && templates.length > 0 && (
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Chọn template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                        {template.is_default && " ⭐"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAutoContent}
+                disabled={isGenerating || !templates || templates.length === 0}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Đang tạo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Auto Content
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <RichTextEditor

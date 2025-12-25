@@ -1,1 +1,13 @@
 project_id = "ciberxlcmpvyusqprkpq"
+
+[functions.admin-change-password]
+verify_jwt = true
+
+[functions.admin-create-user]
+verify_jwt = true
+
+[functions.admin-delete-user]
+verify_jwt = true
+
+[functions.generate-content]
+verify_jwt = true
