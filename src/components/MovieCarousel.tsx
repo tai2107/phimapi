@@ -17,8 +17,24 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = scrollRef.current.clientWidth * 0.8;
-      scrollRef.current.scrollBy({
+      const container = scrollRef.current;
+      const items = container.querySelectorAll('[data-carousel-item]');
+      if (items.length === 0) return;
+      
+      // Get the width of one item including gap
+      const firstItem = items[0] as HTMLElement;
+      const itemWidth = firstItem.offsetWidth;
+      const gap = 12; // gap-3 = 12px on desktop
+      const itemWithGap = itemWidth + gap;
+      
+      // Calculate how many items fit in view
+      const containerWidth = container.clientWidth;
+      const itemsInView = Math.floor(containerWidth / itemWithGap);
+      
+      // Scroll by the number of items that fit in view
+      const scrollAmount = itemsInView * itemWithGap;
+      
+      container.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
       });
@@ -84,18 +100,19 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
       <div className="relative -mx-4 sm:mx-0">
         <div
           ref={scrollRef}
-          className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2 px-4 sm:px-0 scroll-pl-4 sm:scroll-pl-0"
-          style={{ scrollSnapType: 'x mandatory' }}
+          className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2 px-4 sm:px-0"
         >
           {movies.map((movie, index) => (
             <div 
               key={movie._id} 
+              data-carousel-item
               className="flex-shrink-0 w-[100px] sm:w-[130px] md:w-[150px] lg:w-[160px]"
-              style={{ scrollSnapAlign: 'start' }}
             >
               <MovieCard movie={movie} index={index} />
             </div>
           ))}
+          {/* Spacer at the end to ensure last item is fully visible */}
+          <div className="flex-shrink-0 w-4 sm:w-0" aria-hidden="true" />
         </div>
       </div>
     </section>
