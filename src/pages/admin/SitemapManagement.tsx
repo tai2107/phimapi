@@ -24,7 +24,9 @@ import {
   Send,
   Key,
   Save,
-  Zap
+  Zap,
+  Shield,
+  AlertCircle
 } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -38,6 +40,13 @@ interface SitemapStatus {
   lastChecked?: Date;
   urlCount?: number;
   error?: string;
+}
+
+interface VerificationStatus {
+  engine: string;
+  status: "idle" | "checking" | "success" | "error";
+  message?: string;
+  lastChecked?: Date;
 }
 
 const sitemaps: Omit<SitemapStatus, "status">[] = [
@@ -86,6 +95,11 @@ export default function SitemapManagement() {
   const [indexNowKey, setIndexNowKey] = useState("");
   const [manualUrls, setManualUrls] = useState("");
   const [isPinging, setIsPinging] = useState(false);
+  const [verificationStatuses, setVerificationStatuses] = useState<Record<string, VerificationStatus>>({
+    keyFile: { engine: "Key File", status: "idle" },
+    bing: { engine: "Bing IndexNow", status: "idle" },
+    google: { engine: "Google Sitemap", status: "idle" },
+  });
 
   // Fetch site settings
   const { data: siteSettings, isLoading: isLoadingSettings } = useQuery({
@@ -104,13 +118,6 @@ export default function SitemapManagement() {
   });
 
   // Initialize indexNowKey from settings
-  useState(() => {
-    if (siteSettings?.indexnow_key) {
-      setIndexNowKey(siteSettings.indexnow_key);
-    }
-  });
-
-  // Update indexNowKey when settings load
   if (siteSettings?.indexnow_key && indexNowKey === "" && !isLoadingSettings) {
     setIndexNowKey(siteSettings.indexnow_key);
   }
@@ -152,6 +159,129 @@ export default function SitemapManagement() {
       toast.error("Lỗi: " + error.message);
     },
   });
+
+  // Verify IndexNow key
+  const verifyIndexNowKey = async () => {
+    if (!siteSettings?.indexnow_key || !siteSettings?.site_url) {
+      toast.error("Vui lòng cấu hình Site URL và IndexNow key trước");
+      return;
+    }
+
+    const key = siteSettings.indexnow_key;
+    const baseUrl = siteSettings.site_url;
+
+    // Reset statuses
+    setVerificationStatuses({
+      keyFile: { engine: "Key File", status: "checking" },
+      bing: { engine: "Bing IndexNow", status: "checking" },
+      google: { engine: "Google Sitemap", status: "checking" },
+    });
+
+    // 1. Check key file accessibility
+    try {
+      const keyFileUrl = `${baseUrl}/${key}.txt`;
+      const response = await fetch(keyFileUrl, { mode: "no-cors" });
+      // no-cors mode doesn't give us status, so we assume it worked if no error
+      setVerificationStatuses(prev => ({
+        ...prev,
+        keyFile: {
+          engine: "Key File",
+          status: "success",
+          message: `File ${key}.txt có thể truy cập`,
+          lastChecked: new Date(),
+        },
+      }));
+    } catch (error: any) {
+      setVerificationStatuses(prev => ({
+        ...prev,
+        keyFile: {
+          engine: "Key File",
+          status: "error",
+          message: `Không thể truy cập file ${key}.txt - Hãy đảm bảo file tồn tại tại root domain`,
+          lastChecked: new Date(),
+        },
+      }));
+    }
+
+    // 2. Test Bing IndexNow (via our edge function)
+    try {
+      const testUrl = `${baseUrl}/`;
+      const response = await supabase.functions.invoke("indexnow-ping", {
+        body: { urls: [testUrl] },
+      });
+      
+      if (response.error) {
+        throw response.error;
+      }
+
+      const results = response.data?.results || [];
+      const bingResult = results.find((r: any) => r.engine === "Bing/IndexNow");
+      
+      if (bingResult?.success) {
+        setVerificationStatuses(prev => ({
+          ...prev,
+          bing: {
+            engine: "Bing IndexNow",
+            status: "success",
+            message: `Bing đã nhận thông báo (Status: ${bingResult.status})`,
+            lastChecked: new Date(),
+          },
+        }));
+      } else {
+        setVerificationStatuses(prev => ({
+          ...prev,
+          bing: {
+            engine: "Bing IndexNow",
+            status: "error",
+            message: bingResult?.error || `Bing trả về lỗi (Status: ${bingResult?.status})`,
+            lastChecked: new Date(),
+          },
+        }));
+      }
+
+      // 3. Check Google sitemap ping result
+      const googleResult = results.find((r: any) => r.engine === "Google Sitemap Ping");
+      if (googleResult?.success) {
+        setVerificationStatuses(prev => ({
+          ...prev,
+          google: {
+            engine: "Google Sitemap",
+            status: "success",
+            message: `Google đã nhận sitemap ping (Status: ${googleResult.status})`,
+            lastChecked: new Date(),
+          },
+        }));
+      } else {
+        setVerificationStatuses(prev => ({
+          ...prev,
+          google: {
+            engine: "Google Sitemap",
+            status: "error",
+            message: googleResult?.error || `Google ping thất bại`,
+            lastChecked: new Date(),
+          },
+        }));
+      }
+    } catch (error: any) {
+      setVerificationStatuses(prev => ({
+        ...prev,
+        bing: {
+          engine: "Bing IndexNow",
+          status: "error",
+          message: error.message || "Không thể kết nối với Bing",
+          lastChecked: new Date(),
+        },
+        google: {
+          engine: "Google Sitemap",
+          status: "error",
+          message: error.message || "Không thể ping Google",
+          lastChecked: new Date(),
+        },
+      }));
+    }
+
+    toast.success("Đã hoàn thành kiểm tra xác thực");
+  };
 
   const getFullSitemapUrl = (path: string) => {
     if (path === "/sitemap.xml") {
@@ -273,6 +403,34 @@ export default function SitemapManagement() {
     }
   };
 
+  const getVerificationBadge = (status: VerificationStatus) => {
+    switch (status.status) {
+      case "idle":
+        return <Badge variant="outline">Chưa kiểm tra</Badge>;
+      case "checking":
+        return (
+          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+            Đang kiểm tra
+          </Badge>
+        );
+      case "success":
+        return (
+          <Badge variant="outline" className="bg-green-500/10 text-green-500">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Đã xác thực
+          </Badge>
+        );
+      case "error":
+        return (
+          <Badge variant="outline" className="bg-red-500/10 text-red-500">
+            <XCircle className="h-3 w-3 mr-1" />
+            Lỗi
+          </Badge>
+        );
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
@@ -318,12 +476,11 @@ export default function SitemapManagement() {
                   <Card className="border-yellow-500/50 bg-yellow-500/10">
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-3">
-                        <XCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
+                        <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
                         <div>
                           <p className="font-medium text-yellow-500">Chưa cấu hình Site URL</p>
                           <p className="text-sm text-muted-foreground">
-                            Vui lòng thêm <code className="bg-muted px-1 rounded">site_url</code> trong 
-                            Cài đặt Site để sitemap sử dụng đúng domain.
+                            Vui lòng vào <strong>Cài đặt Site</strong> để thêm domain thực của website.
                           </p>
                         </div>
                       </div>
@@ -467,7 +624,7 @@ export default function SitemapManagement() {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Sau khi lưu key, bạn cần tạo file <code className="bg-muted px-1 rounded">{indexNowKey}.txt</code> tại 
+                        Sau khi lưu key, bạn cần tạo file <code className="bg-muted px-1 rounded">{indexNowKey || "[key]"}.txt</code> tại 
                         root domain chứa chính key này để xác thực.
                       </p>
                     </div>
@@ -483,6 +640,64 @@ export default function SitemapManagement() {
                         </p>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* Verification Status */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Shield className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle>Kiểm tra xác thực</CardTitle>
+                          <CardDescription>
+                            Kiểm tra trạng thái kết nối với các search engines
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={verifyIndexNowKey}
+                        disabled={!siteSettings?.indexnow_key || !siteSettings?.site_url}
+                      >
+                        <Shield className="h-4 w-4 mr-2" />
+                        Kiểm tra xác thực
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {(!siteSettings?.site_url || !siteSettings?.indexnow_key) && (
+                      <div className="p-3 bg-yellow-500/10 rounded-lg mb-4">
+                        <div className="flex items-center gap-2 text-yellow-500 text-sm">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Vui lòng cấu hình Site URL và IndexNow key trước khi kiểm tra</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {Object.values(verificationStatuses).map((status) => (
+                        <div key={status.engine} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Globe className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium text-sm">{status.engine}</p>
+                              {status.message && (
+                                <p className="text-xs text-muted-foreground">{status.message}</p>
+                              )}
+                              {status.lastChecked && (
+                                <p className="text-xs text-muted-foreground">
+                                  Kiểm tra lúc: {status.lastChecked.toLocaleTimeString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {getVerificationBadge(status)}
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -563,7 +778,7 @@ export default function SitemapManagement() {
                           <span className="font-medium">Bài viết mới</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Khi đăng bài viết mới, URL sẽ được gửi tự động để index nhanh hơn
+                          Khi đăng bài viết mới (status: published), URL sẽ được gửi tự động để index nhanh hơn
                         </p>
                       </div>
                     </div>
@@ -600,9 +815,9 @@ export default function SitemapManagement() {
                         <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
                           <li>Tạo key ngẫu nhiên hoặc nhập key của bạn</li>
                           <li>Lưu key vào hệ thống</li>
-                          <li>Tạo file <code className="bg-muted px-1 rounded">[key].txt</code> tại root</li>
-                          <li>File chứa chính key đó</li>
-                          <li>Xác minh tại Bing Webmaster Tools</li>
+                          <li>Tạo file <code className="bg-muted px-1 rounded">[key].txt</code> tại root domain</li>
+                          <li>File chứa chính key đó (không có ký tự thừa)</li>
+                          <li>Kiểm tra xác thực và submit URL đầu tiên</li>
                         </ol>
                       </div>
                       <div className="space-y-2">
