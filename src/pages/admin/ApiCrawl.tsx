@@ -245,16 +245,37 @@ const ApiCrawl = () => {
         
         const categoryInfo = categoryMap[movie.type];
         if (categoryInfo) {
-          const { data: category } = await supabase
+          // First check if category exists
+          let { data: existingCategory } = await supabase
             .from("movie_categories")
-            .upsert({ name: categoryInfo.name, slug: categoryInfo.slug }, { onConflict: "slug" })
             .select("id")
-            .single();
+            .eq("slug", categoryInfo.slug)
+            .maybeSingle();
           
-          if (category) {
-            await supabase
+          // Only insert if not exists
+          if (!existingCategory) {
+            const { data: newCategory } = await supabase
+              .from("movie_categories")
+              .insert({ name: categoryInfo.name, slug: categoryInfo.slug })
+              .select("id")
+              .single();
+            existingCategory = newCategory;
+          }
+          
+          if (existingCategory) {
+            // Check if mapping exists
+            const { data: existingMap } = await supabase
               .from("movie_category_map")
-              .upsert({ movie_id: movieId, category_id: category.id }, { onConflict: "movie_id,category_id" });
+              .select("id")
+              .eq("movie_id", movieId)
+              .eq("category_id", existingCategory.id)
+              .maybeSingle();
+            
+            if (!existingMap) {
+              await supabase
+                .from("movie_category_map")
+                .insert({ movie_id: movieId, category_id: existingCategory.id });
+            }
           }
         }
       }
