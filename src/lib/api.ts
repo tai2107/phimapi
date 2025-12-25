@@ -98,11 +98,11 @@ export async function fetchMovieDetailFromAPI(slug: string): Promise<MovieDetail
   return response.json();
 }
 
-// Fetch movie by slug from Supabase
+// Fetch movie by slug from Supabase, fallback to external API if not found
 export async function fetchMovieDetail(slug: string): Promise<MovieDetailResponse> {
   const { supabase } = await import("@/integrations/supabase/client");
   
-  // Fetch movie with related data
+  // Fetch movie with related data from local database
   const { data: movie, error } = await supabase
     .from("movies")
     .select(`
@@ -115,7 +115,18 @@ export async function fetchMovieDetail(slug: string): Promise<MovieDetailRespons
     .eq("slug", slug)
     .maybeSingle();
 
-  if (error || !movie) {
+  // If not found in local database, try fetching from external API
+  if (!movie) {
+    console.log(`Movie "${slug}" not found in local DB, fetching from external API...`);
+    try {
+      return await fetchMovieDetailFromAPI(slug);
+    } catch (apiError) {
+      console.error("Failed to fetch from external API:", apiError);
+      throw new Error("Failed to fetch movie detail");
+    }
+  }
+
+  if (error) {
     throw new Error("Failed to fetch movie detail");
   }
 
