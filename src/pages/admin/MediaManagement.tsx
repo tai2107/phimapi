@@ -453,7 +453,14 @@ const MediaManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Quản lý Media</h1>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <a href="/admin">
+              <Home className="h-5 w-5" />
+            </a>
+          </Button>
+          <h1 className="text-2xl font-bold">Quản lý Media</h1>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant={viewMode === "grid" ? "default" : "outline"}

@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, ArrowUp, ArrowDown, Home } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface HomepageWidget {
@@ -52,6 +52,7 @@ interface HomepageWidget {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  tv_category_ids?: string[];
 }
 
 const defaultWidget: Partial<HomepageWidget> = {
@@ -70,6 +71,7 @@ const defaultWidget: Partial<HomepageWidget> = {
   sort_by: "updated_at",
   posts_count: 12,
   is_active: true,
+  tv_category_ids: [],
 };
 
 const statusOptions = [
@@ -161,6 +163,20 @@ export default function WidgetsManagement() {
         .select("id, year")
         .is("deleted_at", null)
         .order("year", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch TV channel categories
+  const { data: tvCategories } = useQuery({
+    queryKey: ["tv-categories-for-widget"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tv_channel_categories")
+        .select("id, name")
+        .is("deleted_at", null)
+        .order("display_order");
       if (error) throw error;
       return data;
     },
@@ -317,7 +333,14 @@ export default function WidgetsManagement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Quản lý Widget Trang Chủ</h1>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <a href="/admin">
+              <Home className="h-5 w-5" />
+            </a>
+          </Button>
+          <h1 className="text-2xl font-bold">Quản lý Widget Trang Chủ</h1>
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleOpenCreate}>
@@ -382,120 +405,146 @@ export default function WidgetsManagement() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Trạng thái</Label>
-                <div className="flex flex-wrap gap-4">
-                  {statusOptions.map(opt => (
-                    <label key={opt.value} className="flex items-center gap-2">
-                      <Checkbox
-                        checked={(formData.status_filter || []).includes(opt.value)}
-                        onCheckedChange={() => toggleStatus(formData.id || "", opt.value)}
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              {/* Movie-specific filters - only show when NOT tv_channels */}
+              {formData.widget_type !== "tv_channels" && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Trạng thái</Label>
+                    <div className="flex flex-wrap gap-4">
+                      {statusOptions.map(opt => (
+                        <label key={opt.value} className="flex items-center gap-2">
+                          <Checkbox
+                            checked={(formData.status_filter || []).includes(opt.value)}
+                            onCheckedChange={() => toggleStatus(formData.id || "", opt.value)}
+                          />
+                          <span>{opt.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Sắp xếp theo</Label>
-                <Select
-                  value={formData.sort_by}
-                  onValueChange={(value) => setFormData({ ...formData, sort_by: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
+                  <div className="space-y-2">
+                    <Label>Sắp xếp theo</Label>
+                    <Select
+                      value={formData.sort_by}
+                      onValueChange={(value) => setFormData({ ...formData, sort_by: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortOptions.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Thể loại */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Thể loại</Label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={formData.genre_exclude}
+                          onCheckedChange={(checked) => 
+                            setFormData({ ...formData, genre_exclude: !!checked })
+                          }
+                        />
+                        <span>Loại trừ các mục đã chọn</span>
+                      </label>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-3 gap-2">
+                      {genres?.map(genre => (
+                        <label key={genre.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={(formData.genre_ids || []).includes(genre.id)}
+                            onCheckedChange={() => toggleArrayItem("genre_ids", genre.id)}
+                          />
+                          <span>{genre.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quốc gia */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Quốc gia</Label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={formData.country_exclude}
+                          onCheckedChange={(checked) => 
+                            setFormData({ ...formData, country_exclude: !!checked })
+                          }
+                        />
+                        <span>Loại trừ các mục đã chọn</span>
+                      </label>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-3 gap-2">
+                      {countries?.map(country => (
+                        <label key={country.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={(formData.country_ids || []).includes(country.id)}
+                            onCheckedChange={() => toggleArrayItem("country_ids", country.id)}
+                          />
+                          <span>{country.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Năm */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Năm</Label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={formData.year_exclude}
+                          onCheckedChange={(checked) => 
+                            setFormData({ ...formData, year_exclude: !!checked })
+                          }
+                        />
+                        <span>Loại trừ các mục đã chọn</span>
+                      </label>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-4 gap-2">
+                      {years?.map(year => (
+                        <label key={year.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={(formData.year_ids || []).includes(year.id)}
+                            onCheckedChange={() => toggleArrayItem("year_ids", year.id)}
+                          />
+                          <span>{year.year}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* TV-specific filters - only show when tv_channels */}
+              {formData.widget_type === "tv_channels" && (
+                <div className="space-y-2">
+                  <Label>Danh mục kênh TV</Label>
+                  <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-3 gap-2">
+                    {tvCategories?.map(cat => (
+                      <label key={cat.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={(formData.category_ids || []).includes(cat.id)}
+                          onCheckedChange={() => toggleArrayItem("category_ids", cat.id)}
+                        />
+                        <span>{cat.name}</span>
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Thể loại */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Thể loại</Label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={formData.genre_exclude}
-                      onCheckedChange={(checked) => 
-                        setFormData({ ...formData, genre_exclude: !!checked })
-                      }
-                    />
-                    <span>Loại trừ các mục đã chọn</span>
-                  </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Chọn danh mục TV để lọc kênh hiển thị. Để trống để hiển thị tất cả.
+                  </p>
                 </div>
-                <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-3 gap-2">
-                  {genres?.map(genre => (
-                    <label key={genre.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={(formData.genre_ids || []).includes(genre.id)}
-                        onCheckedChange={() => toggleArrayItem("genre_ids", genre.id)}
-                      />
-                      <span>{genre.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quốc gia */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Quốc gia</Label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={formData.country_exclude}
-                      onCheckedChange={(checked) => 
-                        setFormData({ ...formData, country_exclude: !!checked })
-                      }
-                    />
-                    <span>Loại trừ các mục đã chọn</span>
-                  </label>
-                </div>
-                <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-3 gap-2">
-                  {countries?.map(country => (
-                    <label key={country.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={(formData.country_ids || []).includes(country.id)}
-                        onCheckedChange={() => toggleArrayItem("country_ids", country.id)}
-                      />
-                      <span>{country.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Năm */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Năm</Label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={formData.year_exclude}
-                      onCheckedChange={(checked) => 
-                        setFormData({ ...formData, year_exclude: !!checked })
-                      }
-                    />
-                    <span>Loại trừ các mục đã chọn</span>
-                  </label>
-                </div>
-                <div className="max-h-32 overflow-y-auto border rounded-md p-2 grid grid-cols-4 gap-2">
-                  {years?.map(year => (
-                    <label key={year.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={(formData.year_ids || []).includes(year.id)}
-                        onCheckedChange={() => toggleArrayItem("year_ids", year.id)}
-                      />
-                      <span>{year.year}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <Switch
@@ -562,7 +611,8 @@ export default function WidgetsManagement() {
                 <TableCell className="font-medium">{widget.title}</TableCell>
                 <TableCell>
                   <Badge variant="outline">
-                    {widget.widget_type === "slider" ? "Slider" : "Carousel"}
+                    {widget.widget_type === "slider" ? "Slider" : 
+                     widget.widget_type === "tv_channels" ? "TV Channels" : "Carousel"}
                   </Badge>
                 </TableCell>
                 <TableCell>{widget.posts_count}</TableCell>
