@@ -11,3 +11,24 @@ verify_jwt = true
 
 [functions.generate-content]
 verify_jwt = false
+
+[functions.sitemap-index]
+verify_jwt = false
+
+[functions.sitemap-pages]
+verify_jwt = false
+
+[functions.sitemap-movies]
+verify_jwt = false
+
+[functions.sitemap-episodes]
+verify_jwt = false
+
+[functions.sitemap-taxonomy]
+verify_jwt = false
+
+[functions.sitemap-posts]
+verify_jwt = false
+
+[functions.robots-txt]
+verify_jwt = false
