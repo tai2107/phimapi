@@ -150,20 +150,69 @@ export async function fetchMovieDetailFromAPI(slug: string, source: ApiSource = 
     const movie = data.movie;
     if (!movie) throw new Error("Movie not found");
     
-    // Parse categories from nguonc format
+    // Parse categories from nguonc format - structure: { "1": { group: { name: "Định dạng" }, list: [...] }, ... }
     const categories: Category[] = [];
     const countries: Country[] = [];
+    let year = new Date().getFullYear();
+    let type = "series";
     
-    if (movie.category) {
-      Object.values(movie.category).forEach((catGroup: any) => {
-        if (catGroup.group?.name === "Thể loại" && catGroup.list) {
+    if (movie.category && typeof movie.category === 'object') {
+      // Iterate through all category groups
+      Object.keys(movie.category).forEach((key) => {
+        const catGroup = movie.category[key];
+        if (!catGroup || !catGroup.group || !catGroup.list) return;
+        
+        const groupName = catGroup.group.name;
+        
+        // Parse genres from "Thể loại" group
+        if (groupName === "Thể loại") {
           catGroup.list.forEach((item: any) => {
-            categories.push({ id: item.id, name: item.name, slug: createSlugFromName(item.name) });
+            if (item && item.name) {
+              categories.push({ 
+                id: item.id || '', 
+                name: item.name, 
+                slug: createSlugFromName(item.name) 
+              });
+            }
           });
         }
-        if (catGroup.group?.name === "Quốc gia" && catGroup.list) {
+        
+        // Parse countries from "Quốc gia" group
+        if (groupName === "Quốc gia") {
           catGroup.list.forEach((item: any) => {
-            countries.push({ id: item.id, name: item.name, slug: createSlugFromName(item.name) });
+            if (item && item.name) {
+              countries.push({ 
+                id: item.id || '', 
+                name: item.name, 
+                slug: createSlugFromName(item.name) 
+              });
+            }
+          });
+        }
+        
+        // Parse year from "Năm" group
+        if (groupName === "Năm" && catGroup.list?.[0]?.name) {
+          const parsedYear = parseInt(catGroup.list[0].name);
+          if (!isNaN(parsedYear)) {
+            year = parsedYear;
+          }
+        }
+        
+        // Parse format/type from "Định dạng" group
+        if (groupName === "Định dạng" && catGroup.list) {
+          catGroup.list.forEach((item: any) => {
+            if (item && item.name) {
+              const itemName = item.name.toLowerCase();
+              if (itemName.includes("lẻ") || itemName.includes("single")) {
+                type = "single";
+              } else if (itemName.includes("hoạt hình")) {
+                type = "hoathinh";
+              } else if (itemName.includes("tv show")) {
+                type = "tvshows";
+              } else if (itemName.includes("bộ") || itemName.includes("series")) {
+                type = "series";
+              }
+            }
           });
         }
       });
@@ -171,10 +220,10 @@ export async function fetchMovieDetailFromAPI(slug: string, source: ApiSource = 
     
     // Parse episodes from nguonc format
     const episodes: ServerData[] = (movie.episodes || []).map((server: any) => ({
-      server_name: server.server_name,
+      server_name: server.server_name || "Server #1",
       server_data: (server.items || []).map((ep: any) => ({
-        name: ep.name,
-        slug: ep.slug,
+        name: ep.name || "",
+        slug: ep.slug || "",
         filename: "",
         link_embed: ep.embed || "",
         link_m3u8: ep.m3u8 || "",
@@ -182,38 +231,24 @@ export async function fetchMovieDetailFromAPI(slug: string, source: ApiSource = 
       })),
     }));
     
-    // Parse actors/directors
-    const actors = movie.casts ? movie.casts.split(",").map((a: string) => a.trim()).filter(Boolean) : [];
-    const directors = movie.director ? (Array.isArray(movie.director) ? movie.director : [movie.director]).filter(Boolean) : [];
-    
-    // Determine type
-    let type = "series";
-    if (movie.category) {
-      Object.values(movie.category).forEach((catGroup: any) => {
-        if (catGroup.group?.name === "Định dạng" && catGroup.list) {
-          catGroup.list.forEach((item: any) => {
-            if (item.name.toLowerCase().includes("lẻ") || item.name.toLowerCase().includes("single")) {
-              type = "single";
-            } else if (item.name.toLowerCase().includes("hoạt hình")) {
-              type = "hoathinh";
-            } else if (item.name.toLowerCase().includes("tv show")) {
-              type = "tvshows";
-            }
-          });
-        }
-      });
-    }
+    // Parse actors/directors - handle null values
+    const actors = movie.casts 
+      ? String(movie.casts).split(",").map((a: string) => a.trim()).filter(Boolean) 
+      : [];
+    const directors = movie.director 
+      ? (Array.isArray(movie.director) ? movie.director : [movie.director]).filter(Boolean) 
+      : [];
     
     return {
       status: true,
       movie: {
         _id: movie.id || movie.slug,
-        name: movie.name,
-        slug: movie.slug,
+        name: movie.name || "",
+        slug: movie.slug || "",
         origin_name: movie.original_name || "",
         poster_url: movie.poster_url || "",
         thumb_url: movie.thumb_url || "",
-        year: parseInt(movie.category?.["3"]?.list?.[0]?.name) || new Date().getFullYear(),
+        year,
         type,
         quality: movie.quality || "",
         lang: movie.language || "",
@@ -221,7 +256,7 @@ export async function fetchMovieDetailFromAPI(slug: string, source: ApiSource = 
         episode_current: movie.current_episode || "",
         episode_total: String(movie.total_episodes || ""),
         content: movie.description || "",
-        status: movie.current_episode?.toLowerCase().includes("hoàn tất") ? "completed" : "ongoing",
+        status: movie.current_episode?.toLowerCase()?.includes("hoàn tất") ? "completed" : "ongoing",
         showtimes: "",
         trailer_url: "",
         category: categories,
