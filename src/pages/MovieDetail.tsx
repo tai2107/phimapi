@@ -18,6 +18,8 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import VideoPlayer from "@/components/VideoPlayer";
 import { RelatedMovies } from "@/components/RelatedMovies";
+import TableOfContents from "@/components/TableOfContents";
+import MovieSchema from "@/components/MovieSchema";
 import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
 
 type SourceType = "auto" | "m3u8" | "embed";
@@ -101,8 +103,14 @@ const MovieDetail = () => {
   // Get genre and category IDs for related movies
   const genreIds = movie.category?.map((c: any) => c.id || c.slug) || [];
 
+  // Get site URL for schema
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
   return (
     <Layout>
+      {/* JSON-LD Schema */}
+      <MovieSchema movie={movie} siteUrl={siteUrl} />
+      
       {/* Video Player */}
       {isPlaying && currentEpisode && (
         <div className="bg-cinema-dark">
@@ -354,12 +362,15 @@ const MovieDetail = () => {
             </div>
           </div>
 
+          {/* Table of Contents */}
+          {movie.content && <TableOfContents content={movie.content} />}
+
           {/* Content/Description */}
           {movie.content && (
             <div className="mt-6 rounded-lg bg-card p-4">
               <h2 className="mb-3 text-lg font-semibold text-foreground">Nội dung phim</h2>
               <div
-                className={`prose prose-sm dark:prose-invert max-w-none text-muted-foreground ${
+                className={`movie-content-html prose prose-sm dark:prose-invert max-w-none text-muted-foreground ${
                   !showFullContent ? "line-clamp-3" : ""
                 }`}
                 dangerouslySetInnerHTML={{ __html: movie.content }}
