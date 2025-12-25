@@ -1,17 +1,56 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import Hls from "hls.js";
+
+interface Subtitle {
+  id: string;
+  language: string;
+  label: string;
+  file_url: string;
+  file_type: string;
+}
 
 interface VideoPlayerProps {
   linkEmbed?: string;
   linkM3u8?: string;
   linkMp4?: string;
+  movieId?: string;
+  episodeId?: string;
   onError?: () => void;
 }
 
-const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4, onError }: VideoPlayerProps) => {
+const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4, movieId, episodeId, onError }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("");
+
+  // Fetch subtitles for this movie/episode
+  const { data: subtitles } = useQuery({
+    queryKey: ["video-subtitles", movieId, episodeId],
+    queryFn: async () => {
+      if (!movieId) return [];
+      
+      let query = supabase
+        .from("movie_subtitles")
+        .select("*")
+        .eq("movie_id", movieId)
+        .order("display_order", { ascending: true });
+      
+      // If episodeId is provided, get episode-specific or general subtitles
+      if (episodeId) {
+        query = query.or(`episode_id.eq.${episodeId},episode_id.is.null`);
+      } else {
+        query = query.is("episode_id", null);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Subtitle[];
+    },
+    enabled: !!movieId,
+  });
 
   const handleError = useCallback(() => {
     if (onError) {
@@ -105,6 +144,35 @@ const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4, onError }: VideoPlayerProps
     };
   }, [linkM3u8, linkMp4, handleError]);
 
+  // Handle subtitle change
+  const handleSubtitleChange = (subtitleId: string) => {
+    setSelectedSubtitle(subtitleId);
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Remove all existing tracks
+    const existingTracks = video.querySelectorAll("track");
+    existingTracks.forEach(track => track.remove());
+
+    if (subtitleId && subtitles) {
+      const subtitle = subtitles.find(s => s.id === subtitleId);
+      if (subtitle) {
+        const track = document.createElement("track");
+        track.kind = "subtitles";
+        track.label = subtitle.label;
+        track.srclang = subtitle.language;
+        track.src = subtitle.file_url;
+        track.default = true;
+        video.appendChild(track);
+        
+        // Enable the track
+        if (video.textTracks.length > 0) {
+          video.textTracks[0].mode = "showing";
+        }
+      }
+    }
+  };
+
   // If only embed link is available, use iframe
   if (!linkM3u8 && !linkMp4 && linkEmbed) {
     return (
@@ -151,6 +219,24 @@ const VideoPlayer = ({ linkEmbed, linkM3u8, linkMp4, onError }: VideoPlayerProps
           playsInline
           crossOrigin="anonymous"
         />
+
+        {/* Subtitle selector */}
+        {subtitles && subtitles.length > 0 && (
+          <div className="absolute bottom-16 right-4 z-10">
+            <select
+              value={selectedSubtitle}
+              onChange={(e) => handleSubtitleChange(e.target.value)}
+              className="rounded bg-black/80 px-2 py-1 text-sm text-white border border-white/20"
+            >
+              <option value="">Tắt phụ đề</option>
+              {subtitles.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
     );
   }

@@ -130,6 +130,7 @@ const MovieDetail = () => {
                 linkEmbed={sourceType === "m3u8" ? undefined : currentEpisode.link_embed}
                 linkM3u8={sourceType === "embed" ? undefined : currentEpisode.link_m3u8}
                 linkMp4={currentEpisode.link_mp4}
+                movieId={movieId}
                 onError={handlePlayerError}
               />
             </div>

@@ -7,12 +7,13 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Film, Tag, ListVideo, Settings } from "lucide-react";
+import { ArrowLeft, Film, Tag, ListVideo, Settings, Subtitles } from "lucide-react";
 import { toast } from "sonner";
 import MovieInfoTab from "@/components/admin/movie-edit/MovieInfoTab";
 import ClassificationTab from "@/components/admin/movie-edit/ClassificationTab";
 import EpisodesTab from "@/components/admin/movie-edit/EpisodesTab";
 import OtherTab from "@/components/admin/movie-edit/OtherTab";
+import SubtitlesTab from "@/components/admin/movie-edit/SubtitlesTab";
 import { pingIndexNow } from "@/hooks/useIndexNow";
 
 const MovieEdit = () => {
@@ -271,10 +272,10 @@ const MovieEdit = () => {
 
           <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+              <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
                 <TabsTrigger value="info" className="gap-2">
                   <Film className="h-4 w-4" />
-                  <span className="hidden sm:inline">Thông tin phim</span>
+                  <span className="hidden sm:inline">Thông tin</span>
                   <span className="sm:hidden">Info</span>
                 </TabsTrigger>
                 <TabsTrigger value="classification" className="gap-2">
@@ -284,8 +285,13 @@ const MovieEdit = () => {
                 </TabsTrigger>
                 <TabsTrigger value="episodes" className="gap-2" disabled={isNew}>
                   <ListVideo className="h-4 w-4" />
-                  <span className="hidden sm:inline">Danh sách tập</span>
+                  <span className="hidden sm:inline">Tập phim</span>
                   <span className="sm:hidden">Tập</span>
+                </TabsTrigger>
+                <TabsTrigger value="subtitles" className="gap-2" disabled={isNew}>
+                  <Subtitles className="h-4 w-4" />
+                  <span className="hidden sm:inline">Phụ đề</span>
+                  <span className="sm:hidden">Sub</span>
                 </TabsTrigger>
                 <TabsTrigger value="other" className="gap-2">
                   <Settings className="h-4 w-4" />
@@ -324,6 +330,10 @@ const MovieEdit = () => {
                       isSaving={saveMutation.isPending}
                     />
                   )}
+                </TabsContent>
+
+                <TabsContent value="subtitles" className="m-0">
+                  {!isNew && id && <SubtitlesTab movieId={id} />}
                 </TabsContent>
 
                 <TabsContent value="other" className="m-0">
