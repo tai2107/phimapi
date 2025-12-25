@@ -91,6 +91,10 @@ const MovieEdit = () => {
         chieurap: formData.chieurap || false,
         sub_docquyen: formData.sub_docquyen || false,
         is_copyright: formData.is_copyright || false,
+        seo_title: formData.seo_title,
+        seo_description: formData.seo_description,
+        seo_keyword: formData.seo_keyword,
+        schema_json: formData.schema_json,
       };
 
       let movieId = id;
@@ -134,6 +138,62 @@ const MovieEdit = () => {
             country_id: countryId,
           }));
           await supabase.from("movie_countries").insert(countryInserts);
+        }
+      }
+
+      // Update directors
+      await supabase.from("movie_directors").delete().eq("movie_id", movieId!);
+      if (formData.directors?.trim()) {
+        const directorNames = formData.directors.split(",").map((d: string) => d.trim()).filter(Boolean);
+        for (const name of directorNames) {
+          // Find or create director
+          let { data: director } = await supabase
+            .from("directors")
+            .select("id")
+            .eq("name", name)
+            .maybeSingle();
+          
+          if (!director) {
+            const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+            const { data: newDirector } = await supabase
+              .from("directors")
+              .insert({ name, slug })
+              .select("id")
+              .single();
+            director = newDirector;
+          }
+          
+          if (director) {
+            await supabase.from("movie_directors").insert({ movie_id: movieId, director_id: director.id });
+          }
+        }
+      }
+
+      // Update actors
+      await supabase.from("movie_actors").delete().eq("movie_id", movieId!);
+      if (formData.actors?.trim()) {
+        const actorNames = formData.actors.split(",").map((a: string) => a.trim()).filter(Boolean);
+        for (const name of actorNames) {
+          // Find or create actor
+          let { data: actor } = await supabase
+            .from("actors")
+            .select("id")
+            .eq("name", name)
+            .maybeSingle();
+          
+          if (!actor) {
+            const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+            const { data: newActor } = await supabase
+              .from("actors")
+              .insert({ name, slug })
+              .select("id")
+              .single();
+            actor = newActor;
+          }
+          
+          if (actor) {
+            await supabase.from("movie_actors").insert({ movie_id: movieId, actor_id: actor.id });
+          }
         }
       }
 
