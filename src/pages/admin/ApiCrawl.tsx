@@ -377,16 +377,39 @@ const ApiCrawl = () => {
         }
       }
 
-      // Process episodes - batch insert for better performance
+      // Process episodes - only delete episodes from the same source, keep episodes from other sources
       if (movieData.episodes && movieData.episodes.length > 0) {
-        await supabase.from("episodes").delete().eq("movie_id", movieId);
+        // Get source prefix to identify which API source the episodes came from
+        const sourcePrefix = apiSource === "phimapi" ? "[PhimAPI]" : "[NguonC]";
+        
+        // Only delete episodes from the current source (matching prefix)
+        // This preserves episodes from other sources
+        const { data: existingEpisodes } = await supabase
+          .from("episodes")
+          .select("id, server_name")
+          .eq("movie_id", movieId);
+        
+        if (existingEpisodes) {
+          const episodesToDelete = existingEpisodes
+            .filter(ep => ep.server_name.startsWith(sourcePrefix))
+            .map(ep => ep.id);
+          
+          if (episodesToDelete.length > 0) {
+            await supabase
+              .from("episodes")
+              .delete()
+              .in("id", episodesToDelete);
+          }
+        }
         
         const allEpisodes: any[] = [];
         for (const server of movieData.episodes) {
+          // Add source prefix to server_name to identify the source
+          const serverNameWithSource = `${sourcePrefix} ${server.server_name}`;
           for (const ep of server.server_data) {
             allEpisodes.push({
               movie_id: movieId,
-              server_name: server.server_name,
+              server_name: serverNameWithSource,
               name: ep.name,
               slug: ep.slug,
               filename: ep.filename,
