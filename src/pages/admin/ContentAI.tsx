@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { Save, Plus, Pencil, Trash2, Star, Settings, Info } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 interface PromptTemplate {
   id: string;
@@ -210,13 +211,15 @@ export default function ContentAI() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AdminSidebar />
-      <main className="flex-1 p-6 lg:p-8 ml-0 lg:ml-64">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Content AI</h1>
-          </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AdminSidebar />
+        <main className="flex-1 p-6 lg:p-8">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <h1 className="text-2xl font-bold">Content AI</h1>
+            </div>
 
           {/* AI Settings */}
           <Card>
@@ -425,7 +428,8 @@ export default function ContentAI() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </main>
-    </div>
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }
