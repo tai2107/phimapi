@@ -46,6 +46,7 @@ import Documentation from "./pages/admin/Documentation";
 import AdsManagement from "./pages/admin/AdsManagement";
 import { Header } from "./components/Header";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ const App = () => (
           <TrackingScripts />
           <Toaster />
           <Sonner />
+          <PWAInstallPrompt />
           <BrowserRouter>
           <AuthProvider>
           <Routes>
