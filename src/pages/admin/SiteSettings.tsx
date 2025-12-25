@@ -29,6 +29,7 @@ export default function SiteSettings() {
     favicon_url: "",
     google_analytics_id: "",
     google_tag_manager_id: "",
+    facebook_app_id: "",
     head_html: "",
     footer_html: "",
   });
@@ -267,6 +268,25 @@ export default function SiteSettings() {
               />
               <p className="text-xs text-muted-foreground">
                 Lấy ID tại: Google Tag Manager → Container → Container ID (góc trên bên phải)
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Facebook App ID</CardTitle>
+              <CardDescription>
+                Nhập App ID từ Facebook Developers để sử dụng Facebook Comments và các tính năng khác.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                value={settings.facebook_app_id}
+                onChange={(e) => setSettings({ ...settings, facebook_app_id: e.target.value })}
+                placeholder="123456789012345"
+              />
+              <p className="text-xs text-muted-foreground">
+                Lấy App ID tại: <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">developers.facebook.com/apps</a> → Chọn App → Settings → Basic → App ID
               </p>
             </CardContent>
           </Card>
