@@ -8,6 +8,7 @@ import { ProtectedAdminRoute } from "@/components/admin/ProtectedAdminRoute";
 import Index from "./pages/Index";
 import MovieDetail from "./pages/MovieDetail";
 import MovieList from "./pages/MovieList";
+import AllMovies from "./pages/AllMovies";
 import Search from "./pages/Search";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
@@ -209,6 +210,7 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/phim/:slug" element={<MovieDetail />} />
                   <Route path="/danh-sach/:type" element={<MovieList />} />
+                  <Route path="/danh-muc/phim" element={<AllMovies />} />
                   <Route path="/tim-kiem" element={<Search />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
