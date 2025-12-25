@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SiteSettings {
+  site_url: string | null;
+  site_name: string | null;
   logo_url: string | null;
   favicon_url: string | null;
   head_html: string | null;
   footer_html: string | null;
-  site_name: string | null;
 }
 
 export function useSiteSettings() {
@@ -20,11 +21,12 @@ export function useSiteSettings() {
       if (error) throw error;
 
       const settings: SiteSettings = {
+        site_url: null,
+        site_name: null,
         logo_url: null,
         favicon_url: null,
         head_html: null,
         footer_html: null,
-        site_name: null,
       };
 
       data?.forEach((item) => {

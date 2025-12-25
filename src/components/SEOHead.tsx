@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useSeoSettings } from "@/hooks/useSeoSettings";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -8,6 +9,8 @@ interface SEOHeadProps {
   image?: string;
   type?: "website" | "article" | "video.movie";
   url?: string;
+  noindex?: boolean;
+  keywords?: string;
 }
 
 export function SEOHead({ 
@@ -15,48 +18,68 @@ export function SEOHead({
   description, 
   image,
   type = "website",
-  url 
+  url,
+  noindex = false,
+  keywords
 }: SEOHeadProps) {
+  const location = useLocation();
   const { data: seoSettings } = useSeoSettings();
   const { data: siteSettings } = useSiteSettings();
 
   const siteName = seoSettings?.site_name || siteSettings?.site_name || "KKPhim";
+  const siteUrl = siteSettings?.site_url || window.location.origin;
   const faviconUrl = siteSettings?.favicon_url || seoSettings?.favicon_url;
   
   const pageTitle = title ? `${title} - ${siteName}` : siteName;
   const pageDescription = description || seoSettings?.homepage_description || "Xem phim online miễn phí chất lượng cao";
+  const canonicalUrl = url || `${siteUrl}${location.pathname}`;
 
   useEffect(() => {
     // Update document title
     document.title = pageTitle;
 
     // Update meta description
-    let metaDescription = document.querySelector('meta[name="description"]');
-    if (!metaDescription) {
-      metaDescription = document.createElement("meta");
-      metaDescription.setAttribute("name", "description");
-      document.head.appendChild(metaDescription);
+    updateMetaTag("description", pageDescription, "name");
+
+    // Update canonical URL
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
     }
-    metaDescription.setAttribute("content", pageDescription);
+    canonical.setAttribute("href", canonicalUrl);
+
+    // Update robots meta
+    if (noindex) {
+      updateMetaTag("robots", "noindex, nofollow", "name");
+    } else {
+      updateMetaTag("robots", "index, follow", "name");
+    }
+
+    // Update keywords if provided
+    if (keywords) {
+      updateMetaTag("keywords", keywords, "name");
+    }
 
     // Update OG tags
-    updateMetaTag("og:title", pageTitle);
-    updateMetaTag("og:description", pageDescription);
-    updateMetaTag("og:type", type);
-    updateMetaTag("og:site_name", siteName);
+    updateMetaTag("og:title", pageTitle, "property");
+    updateMetaTag("og:description", pageDescription, "property");
+    updateMetaTag("og:type", type, "property");
+    updateMetaTag("og:site_name", siteName, "property");
+    updateMetaTag("og:url", canonicalUrl, "property");
+    updateMetaTag("og:locale", "vi_VN", "property");
     
     if (image) {
-      updateMetaTag("og:image", image);
-      updateMetaTag("twitter:image", image);
-    }
-    
-    if (url) {
-      updateMetaTag("og:url", url);
+      updateMetaTag("og:image", image, "property");
+      updateMetaTag("og:image:alt", pageTitle, "property");
+      updateMetaTag("twitter:image", image, "property");
     }
 
     // Update Twitter tags
-    updateMetaTag("twitter:title", pageTitle);
-    updateMetaTag("twitter:description", pageDescription);
+    updateMetaTag("twitter:card", image ? "summary_large_image" : "summary", "name");
+    updateMetaTag("twitter:title", pageTitle, "name");
+    updateMetaTag("twitter:description", pageDescription, "name");
 
     // Update favicon
     if (faviconUrl) {
@@ -80,26 +103,21 @@ export function SEOHead({
       }
       customHead.innerHTML = siteSettings.head_html;
     }
-  }, [pageTitle, pageDescription, faviconUrl, image, type, url, siteName, siteSettings?.head_html]);
+  }, [pageTitle, pageDescription, faviconUrl, image, type, canonicalUrl, siteName, siteSettings?.head_html, noindex, keywords]);
 
   return null;
 }
 
-function updateMetaTag(property: string, content: string) {
-  const isOg = property.startsWith("og:") || property.startsWith("twitter:");
-  const selector = isOg 
-    ? `meta[property="${property}"]` 
-    : `meta[name="${property}"]`;
+function updateMetaTag(name: string, content: string, type: "name" | "property") {
+  const selector = type === "property" 
+    ? `meta[property="${name}"]` 
+    : `meta[name="${name}"]`;
   
   let meta = document.querySelector(selector) as HTMLMetaElement;
   
   if (!meta) {
     meta = document.createElement("meta");
-    if (isOg) {
-      meta.setAttribute("property", property);
-    } else {
-      meta.setAttribute("name", property);
-    }
+    meta.setAttribute(type, name);
     document.head.appendChild(meta);
   }
   
