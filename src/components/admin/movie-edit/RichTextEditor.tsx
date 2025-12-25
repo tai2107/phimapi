@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -46,6 +46,13 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
       onChange(editor.getHTML());
     },
   });
+
+  // Update editor content when content prop changes from outside
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content, { emitUpdate: false });
+    }
+  }, [content, editor]);
 
   if (!editor) {
     return null;
