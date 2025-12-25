@@ -89,7 +89,7 @@ const TvChannelEdit = () => {
         display_order: channel.display_order || 0,
       });
       const sources = Array.isArray(channel.streaming_sources) ? channel.streaming_sources : [];
-      setStreamingSources(sources.length > 0 ? sources as StreamingSource[] : [{ link: "", quality: "HD", type: "m3u8" }]);
+      setStreamingSources(sources.length > 0 ? (sources as unknown as StreamingSource[]) : [{ link: "", quality: "HD", type: "m3u8" }]);
     }
   }, [channel]);
 
@@ -385,7 +385,7 @@ const TvChannelEdit = () => {
           setFormData({ ...formData, logo_url: url });
           setShowMediaPicker(false);
         }}
-        fileType="image"
+        accept="image"
       />
     </SidebarProvider>
   );

@@ -30,6 +30,13 @@ import MediaManagement from "./pages/admin/MediaManagement";
 import SeoSettings from "./pages/admin/SeoSettings";
 import WidgetsManagement from "./pages/admin/WidgetsManagement";
 import SiteSettings from "./pages/admin/SiteSettings";
+import MovieCategoriesManagement from "./pages/admin/MovieCategoriesManagement";
+import TvChannelsManagement from "./pages/admin/TvChannelsManagement";
+import TvChannelCategoriesManagement from "./pages/admin/TvChannelCategoriesManagement";
+import TvChannelEdit from "./pages/admin/TvChannelEdit";
+import TaxonomyList from "./pages/TaxonomyList";
+import TvList from "./pages/TvList";
+import TvWatch from "./pages/TvWatch";
 import NotFound from "./pages/NotFound";
 import { Header } from "./components/Header";
 
@@ -203,6 +210,38 @@ const App = () => (
                 </ProtectedAdminRoute>
               }
             />
+            <Route
+              path="/admin/movie-categories"
+              element={
+                <ProtectedAdminRoute>
+                  <MovieCategoriesManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/tv-channels"
+              element={
+                <ProtectedAdminRoute>
+                  <TvChannelsManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/tv-channels/:id"
+              element={
+                <ProtectedAdminRoute>
+                  <TvChannelEdit />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/tv-channel-categories"
+              element={
+                <ProtectedAdminRoute>
+                  <TvChannelCategoriesManagement />
+                </ProtectedAdminRoute>
+              }
+            />
             <Route path="/*" element={
               <>
                 <Header />
@@ -212,6 +251,9 @@ const App = () => (
                   <Route path="/danh-sach/:type" element={<MovieList />} />
                   <Route path="/danh-muc/phim" element={<AllMovies />} />
                   <Route path="/tim-kiem" element={<Search />} />
+                  <Route path="/:type/:slug" element={<TaxonomyList />} />
+                  <Route path="/tv" element={<TvList />} />
+                  <Route path="/tv/:slug" element={<TvWatch />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </>
