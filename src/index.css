@@ -216,6 +216,52 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* TipTap Editor Styles */
+  .ProseMirror h1 {
+    @apply text-3xl font-bold mt-6 mb-4;
+  }
+
+  .ProseMirror h2 {
+    @apply text-2xl font-bold mt-5 mb-3;
+  }
+
+  .ProseMirror h3 {
+    @apply text-xl font-semibold mt-4 mb-2;
+  }
+
+  .ProseMirror h4 {
+    @apply text-lg font-semibold mt-3 mb-2;
+  }
+
+  .ProseMirror p {
+    @apply mb-3;
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol {
+    @apply pl-6 mb-3;
+  }
+
+  .ProseMirror ul {
+    @apply list-disc;
+  }
+
+  .ProseMirror ol {
+    @apply list-decimal;
+  }
+
+  .ProseMirror blockquote {
+    @apply border-l-4 border-primary pl-4 italic my-4;
+  }
+
+  .ProseMirror code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm;
+  }
+
+  .ProseMirror pre {
+    @apply bg-muted p-4 rounded-lg my-4 overflow-x-auto;
+  }
 }
 
 @layer utilities {
