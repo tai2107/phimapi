@@ -97,10 +97,10 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
       </div>
 
       {/* Movie grid - scrollable with responsive sizing */}
-      <div className="relative -mx-4 sm:mx-0">
+      <div className="overflow-hidden">
         <div
           ref={scrollRef}
-          className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2 px-4 sm:px-0"
+          className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2"
         >
           {movies.map((movie, index) => (
             <div 
@@ -111,8 +111,6 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
               <MovieCard movie={movie} index={index} />
             </div>
           ))}
-          {/* Spacer at the end to ensure last item is fully visible */}
-          <div className="flex-shrink-0 w-4 sm:w-0" aria-hidden="true" />
         </div>
       </div>
     </section>
