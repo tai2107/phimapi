@@ -247,14 +247,18 @@ const MovieDetail = () => {
               {movie.director && movie.director.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">Đạo diễn:</span>
-                  {movie.director.map((d: any) => (
-                    <span
-                      key={d.slug}
-                      className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
-                    >
-                      {d.name}
-                    </span>
-                  ))}
+                  {movie.director.map((d: any, index: number) => {
+                    const name = typeof d === 'string' ? d : d.name;
+                    const key = typeof d === 'string' ? `director-${index}` : d.slug || `director-${index}`;
+                    return (
+                      <span
+                        key={key}
+                        className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                      >
+                        {name}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
 
@@ -262,14 +266,18 @@ const MovieDetail = () => {
               {movie.actor && movie.actor.length > 0 && (
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-muted-foreground">Diễn viên:</span>
-                  {movie.actor.slice(0, 10).map((a: any) => (
-                    <span
-                      key={a.slug}
-                      className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
-                    >
-                      {a.name}
-                    </span>
-                  ))}
+                  {movie.actor.slice(0, 10).map((a: any, index: number) => {
+                    const name = typeof a === 'string' ? a : a.name;
+                    const key = typeof a === 'string' ? `actor-${index}` : a.slug || `actor-${index}`;
+                    return (
+                      <span
+                        key={key}
+                        className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                      >
+                        {name}
+                      </span>
+                    );
+                  })}
                   {movie.actor.length > 10 && (
                     <span className="text-xs text-muted-foreground">+{movie.actor.length - 10} khác</span>
                   )}

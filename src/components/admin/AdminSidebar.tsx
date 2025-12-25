@@ -57,9 +57,6 @@ const movieManagementItems = [
   { title: "Thể loại", url: "/admin/genres", icon: FolderOpen },
   { title: "Quốc gia", url: "/admin/countries", icon: Globe },
   { title: "Năm", url: "/admin/years", icon: Calendar },
-  { title: "Tags", url: "/admin/tags", icon: Tag },
-  { title: "Đạo diễn", url: "/admin/directors", icon: Clapperboard },
-  { title: "Diễn viên", url: "/admin/actors", icon: UserCircle },
 ];
 
 const tvManagementItems = [
