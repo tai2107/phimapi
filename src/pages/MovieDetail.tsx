@@ -20,6 +20,8 @@ import VideoPlayer from "@/components/VideoPlayer";
 import { RelatedMovies } from "@/components/RelatedMovies";
 import TableOfContents from "@/components/TableOfContents";
 import MovieSchema from "@/components/MovieSchema";
+import { FacebookComments } from "@/components/FacebookComments";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
 
 type SourceType = "auto" | "m3u8" | "embed";
@@ -31,6 +33,8 @@ const MovieDetail = () => {
   const [showFullContent, setShowFullContent] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sourceType, setSourceType] = useState<SourceType>("auto");
+
+  const { data: siteSettings } = useSiteSettings();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["movie", slug],
@@ -442,6 +446,13 @@ const MovieDetail = () => {
               </div>
             </div>
           )}
+
+          {/* Facebook Comments */}
+          <div className="mt-6">
+            <FacebookComments 
+              url={`${siteSettings?.site_url || window.location.origin}/phim/${slug}`} 
+            />
+          </div>
 
           {/* Related Movies */}
           <RelatedMovies 
