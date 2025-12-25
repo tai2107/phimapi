@@ -12,7 +12,7 @@ import {
   Shuffle,
   Play,
 } from "lucide-react";
-import { fetchNewMovies, fetchMovieDetailFromAPI, fetchCategories, fetchCountries } from "@/lib/api";
+import { fetchNewMovies, fetchMovieDetailFromAPI, fetchCategories, fetchCountries, type ApiSource } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,13 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+// API Source options
+const API_SOURCE_OPTIONS = [
+  { id: "phimapi" as const, label: "PhimAPI.com", url: "https://phimapi.com" },
+  { id: "nguonc" as const, label: "NguonC.com", url: "https://phim.nguonc.com" },
+];
 
 interface CrawlResult {
   url: string;
@@ -66,12 +73,12 @@ const ApiCrawl = () => {
   const [crawlProgress, setCrawlProgress] = useState(0);
   const [currentCrawling, setCurrentCrawling] = useState<string>("");
   
+  // API Source selection
+  const [apiSource, setApiSource] = useState<ApiSource>("phimapi");
+  
   // Page crawl
   const [pageFrom, setPageFrom] = useState("1");
   const [pageTo, setPageTo] = useState("1");
-  
-  // URL API
-  const [apiUrl, setApiUrl] = useState("https://phimapi.com/danh-sach/phim-moi-cap-nhat");
   
   // Wait timeout
   const [waitFrom, setWaitFrom] = useState("1000");
@@ -105,21 +112,23 @@ const ApiCrawl = () => {
 
   // API Status checks
   const { data: apiStatus, isLoading: checkingApi, refetch: recheckApi } = useQuery({
-    queryKey: ["api-status"],
+    queryKey: ["api-status", apiSource],
     queryFn: async () => {
       const start = Date.now();
       try {
-        await fetchNewMovies(1);
+        await fetchNewMovies(1, apiSource);
         return {
           status: "online" as const,
           latency: Date.now() - start,
           lastCheck: new Date(),
+          source: apiSource,
         };
       } catch (error) {
         return {
           status: "offline" as const,
           latency: 0,
           lastCheck: new Date(),
+          source: apiSource,
         };
       }
     },
@@ -127,8 +136,8 @@ const ApiCrawl = () => {
   });
 
   const { data: newMovies } = useQuery({
-    queryKey: ["api-new-movies"],
-    queryFn: () => fetchNewMovies(1),
+    queryKey: ["api-new-movies", apiSource],
+    queryFn: () => fetchNewMovies(1, apiSource),
   });
 
   const { data: categories } = useQuery({
@@ -165,11 +174,12 @@ const ApiCrawl = () => {
 
   // Main crawl function
   const crawlMovie = async (movieSlug: string): Promise<CrawlResult> => {
-    const url = `https://phimapi.com/phim/${movieSlug}`;
+    const sourceInfo = API_SOURCE_OPTIONS.find(s => s.id === apiSource)!;
+    const url = `${sourceInfo.url}/phim/${movieSlug}`;
     const timestamp = new Date().toISOString();
     
     try {
-      const movieData = await fetchMovieDetailFromAPI(movieSlug);
+      const movieData = await fetchMovieDetailFromAPI(movieSlug, apiSource);
       if (!movieData || !movieData.movie) {
         return { url, timestamp, status: "error", message: `Không tìm thấy phim: ${movieSlug}` };
       }
@@ -427,14 +437,15 @@ const ApiCrawl = () => {
     const totalPages = to - from + 1;
 
     try {
+      const sourceInfo = API_SOURCE_OPTIONS.find(s => s.id === apiSource)!;
       for (let page = from; page <= to; page++) {
-        setCurrentCrawling(`Đang lấy danh sách phim trang ${page}/${to}...`);
+        setCurrentCrawling(`Đang lấy danh sách phim trang ${page}/${to} từ ${sourceInfo.label}...`);
         setCrawlProgress(((page - from) / totalPages) * 100);
         
-        const moviesData = await fetchNewMovies(page);
+        const moviesData = await fetchNewMovies(page, apiSource);
         if (moviesData && moviesData.items) {
           for (const movie of moviesData.items) {
-            urls.push(`https://phimapi.com/phim/${movie.slug}`);
+            urls.push(movie.slug);
           }
         }
       }
@@ -490,27 +501,28 @@ const ApiCrawl = () => {
         .single();
 
       for (let i = 0; i < urls.length; i++) {
-        const url = urls[i];
-        const match = url.match(/phim\/([^\/\?]+)/);
+        const input = urls[i];
+        // Support both URL format and slug format
+        const match = input.match(/phim\/([^\/\?]+)/);
+        const slug = match ? match[1] : input.trim();
         
-        if (!match) {
+        if (!slug) {
           const errorResult: CrawlResult = {
-            url,
+            url: input,
             timestamp: new Date().toISOString(),
             status: "error",
-            message: "URL không hợp lệ"
+            message: "Slug không hợp lệ"
           };
           setErrorResults(prev => [...prev, errorResult]);
           continue;
         }
 
-        const slug = match[1];
-        setCurrentCrawling(url);
+        setCurrentCrawling(slug);
         setCrawlProgress(((i + 1) / urls.length) * 100);
 
         // Add to pending list
         const pendingResult: CrawlResult = {
-          url,
+          url: slug,
           timestamp: new Date().toISOString(),
           status: "pending"
         };
@@ -583,7 +595,7 @@ const ApiCrawl = () => {
               <div className="flex-1">
                 <h1 className="text-xl font-bold">Crawl Phim</h1>
                 <p className="text-sm text-muted-foreground">
-                  Crawl phim từ PhimAPI
+                  Crawl phim từ {API_SOURCE_OPTIONS.find(s => s.id === apiSource)?.label || "API"}
                 </p>
               </div>
               <Button
@@ -866,22 +878,33 @@ const ApiCrawl = () => {
                       />
                     </div>
 
-                    {/* URL API */}
+                    {/* API Source Selector */}
                     <div className="flex items-center gap-4">
-                      <Label className="whitespace-nowrap">Url API</Label>
-                      <Input
-                        value={apiUrl}
-                        onChange={(e) => setApiUrl(e.target.value)}
-                        className="flex-1 h-8"
-                        placeholder="https://phimapi.com/danh-sach/phim-moi-cap-nhat"
+                      <Label className="whitespace-nowrap font-semibold text-primary">Nguồn API</Label>
+                      <RadioGroup
+                        value={apiSource}
+                        onValueChange={(value) => setApiSource(value as ApiSource)}
+                        className="flex gap-4"
                         disabled={isCrawling}
-                      />
+                      >
+                        {API_SOURCE_OPTIONS.map((source) => (
+                          <div key={source.id} className="flex items-center space-x-2">
+                            <RadioGroupItem value={source.id} id={`source-${source.id}`} disabled={isCrawling} />
+                            <Label 
+                              htmlFor={`source-${source.id}`} 
+                              className={`cursor-pointer ${apiSource === source.id ? "text-primary font-semibold" : ""}`}
+                            >
+                              {source.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                       <Button 
                         onClick={handleGetListMovies} 
                         disabled={isCrawling}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-600 hover:bg-blue-700 ml-auto"
                       >
-                        {isCrawling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Get List Movies"}
+                        {isCrawling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Lấy danh sách phim"}
                       </Button>
                     </div>
 
@@ -910,7 +933,7 @@ const ApiCrawl = () => {
                     <Textarea
                       value={movieList}
                       onChange={(e) => setMovieList(e.target.value)}
-                      placeholder="Danh sách URL phim (mỗi URL một dòng)&#10;https://phimapi.com/phim/ten-phim-1&#10;https://phimapi.com/phim/ten-phim-2"
+                      placeholder="Danh sách slug phim (mỗi slug một dòng)&#10;ten-phim-1&#10;ten-phim-2&#10;&#10;Hoặc URL đầy đủ:&#10;https://phimapi.com/phim/ten-phim-1"
                       className="min-h-[200px] font-mono text-sm"
                       disabled={isCrawling}
                     />
