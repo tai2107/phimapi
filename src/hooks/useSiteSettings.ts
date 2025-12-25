@@ -8,6 +8,7 @@ export interface SiteSettings {
   favicon_url: string | null;
   google_analytics_id: string | null;
   google_tag_manager_id: string | null;
+  facebook_app_id: string | null;
   head_html: string | null;
   footer_html: string | null;
 }
@@ -29,6 +30,7 @@ export function useSiteSettings() {
         favicon_url: null,
         google_analytics_id: null,
         google_tag_manager_id: null,
+        facebook_app_id: null,
         head_html: null,
         footer_html: null,
       };
