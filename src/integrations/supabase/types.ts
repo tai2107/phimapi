@@ -50,6 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_prompt_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          prompt_content: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          prompt_content: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          prompt_content?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       countries: {
         Row: {
           created_at: string
