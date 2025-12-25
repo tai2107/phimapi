@@ -10,7 +10,7 @@ export function Footer() {
   const siteName = seoSettings?.site_name || siteSettings?.site_name || "KKPhim";
 
   return (
-    <footer className="mt-8 border-t border-border bg-card">
+    <footer className="mt-8 border-t border-border bg-card hidden md:block">
       {/* Custom footer HTML */}
       {siteSettings?.footer_html && (
         <div 

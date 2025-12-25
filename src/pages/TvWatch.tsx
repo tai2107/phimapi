@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tv, Share2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface StreamingSource {
   name: string;
@@ -21,6 +22,7 @@ const TvWatch = () => {
   const { slug } = useParams();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedSource, setSelectedSource] = useState(0);
+  const [autoSwitchEnabled, setAutoSwitchEnabled] = useState(true);
 
   const { data: channel, isLoading: channelLoading } = useQuery({
     queryKey: ["tv-channel", slug],
@@ -78,6 +80,26 @@ const TvWatch = () => {
 
   const currentSource = sources[selectedSource];
 
+  // Auto-switch to next source on error
+  const handlePlayerError = useCallback(() => {
+    if (!autoSwitchEnabled || sources.length <= 1) return;
+    
+    const nextIndex = selectedSource + 1;
+    if (nextIndex < sources.length) {
+      toast.info(`Nguồn ${sources[selectedSource].name || selectedSource + 1} lỗi. Đang chuyển sang nguồn tiếp theo...`);
+      setSelectedSource(nextIndex);
+    } else {
+      toast.error("Tất cả các nguồn đều không khả dụng. Vui lòng thử lại sau.");
+      setAutoSwitchEnabled(false); // Disable auto-switch after trying all sources
+    }
+  }, [sources, selectedSource, autoSwitchEnabled]);
+
+  // Reset auto-switch when channel changes
+  useEffect(() => {
+    setSelectedSource(0);
+    setAutoSwitchEnabled(true);
+  }, [slug]);
+
   if (channelLoading) {
     return (
       <Layout>
@@ -121,6 +143,7 @@ const TvWatch = () => {
                     linkEmbed={currentSource.type === "embed" ? currentSource.link : ""}
                     linkM3u8={currentSource.type === "m3u8" ? currentSource.link : ""}
                     linkMp4={currentSource.type === "mp4" ? currentSource.link : ""}
+                    onError={handlePlayerError}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -130,7 +153,7 @@ const TvWatch = () => {
               </div>
 
               {/* Channel Info */}
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   {channel.logo_url && (
                     <img src={channel.logo_url} alt={channel.name} className="h-10 w-16 object-contain" />
@@ -164,7 +187,10 @@ const TvWatch = () => {
                         key={index}
                         variant={selectedSource === index ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setSelectedSource(index)}
+                        onClick={() => {
+                          setSelectedSource(index);
+                          setAutoSwitchEnabled(true);
+                        }}
                         className="flex items-center gap-2"
                       >
                         <span>{source.name || `Nguồn ${index + 1}`}</span>
@@ -174,7 +200,7 @@ const TvWatch = () => {
                   </div>
                   {sources.length > 1 && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      Nếu nguồn này không hoạt động, vui lòng chọn nguồn khác
+                      Tự động chuyển nguồn khi nguồn hiện tại lỗi. Bạn cũng có thể chọn nguồn thủ công.
                     </p>
                   )}
                 </div>
@@ -229,7 +255,7 @@ const TvWatch = () => {
         </div>
 
         {/* Channels Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
           {filteredChannels?.map((ch) => (
             <Link
               key={ch.id}
@@ -243,7 +269,7 @@ const TvWatch = () => {
                 <img src={ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-2" />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <Tv className="h-8 w-8 text-muted-foreground" />
+                  <Tv className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                 </div>
               )}
               {ch.slug === slug && (
