@@ -41,6 +41,7 @@ import TvList from "./pages/TvList";
 import TvWatch from "./pages/TvWatch";
 import NotFound from "./pages/NotFound";
 import ContentAI from "./pages/admin/ContentAI";
+import Documentation from "./pages/admin/Documentation";
 import { Header } from "./components/Header";
 
 const queryClient = new QueryClient({
@@ -259,6 +260,14 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <TvChannelCategoriesManagement />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/docs"
+              element={
+                <ProtectedAdminRoute>
+                  <Documentation />
                 </ProtectedAdminRoute>
               }
             />
