@@ -235,6 +235,36 @@ const MovieInfoTab = ({ formData, setFormData, onSave, onCancel, isSaving }: Mov
               />
             </div>
           </div>
+
+          {/* Directors and Actors */}
+          <Separator className="my-4" />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="directors">Đạo diễn</Label>
+              <Input
+                id="directors"
+                value={formData.directors || ""}
+                onChange={(e) => updateField("directors", e.target.value)}
+                placeholder="James Cameron, Steven Spielberg"
+              />
+              <p className="text-xs text-muted-foreground">
+                Nhập tên đạo diễn, phân cách bằng dấu phẩy
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="actors">Diễn viên</Label>
+              <Input
+                id="actors"
+                value={formData.actors || ""}
+                onChange={(e) => updateField("actors", e.target.value)}
+                placeholder="Tom Cruise, Leonardo DiCaprio"
+              />
+              <p className="text-xs text-muted-foreground">
+                Nhập tên diễn viên, phân cách bằng dấu phẩy
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
