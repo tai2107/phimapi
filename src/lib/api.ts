@@ -38,6 +38,7 @@ export interface Episode {
   filename: string;
   link_embed: string;
   link_m3u8: string;
+  link_mp4: string;
 }
 
 export interface ServerData {
@@ -166,6 +167,7 @@ export async function fetchMovieDetail(slug: string): Promise<MovieDetailRespons
       filename: ep.filename || "",
       link_embed: ep.link_embed || "",
       link_m3u8: ep.link_m3u8 || "",
+      link_mp4: ep.link_mp4 || "",
     });
   });
 
