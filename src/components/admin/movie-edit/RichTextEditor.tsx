@@ -50,7 +50,12 @@ const RichTextEditor = ({ content, onChange }: RichTextEditorProps) => {
   // Update editor content when content prop changes from outside
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content, { emitUpdate: false });
+      editor.commands.setContent(content, { 
+        emitUpdate: false,
+        parseOptions: {
+          preserveWhitespace: false,
+        }
+      });
     }
   }, [content, editor]);
 
