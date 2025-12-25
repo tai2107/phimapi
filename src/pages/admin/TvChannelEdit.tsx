@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import MediaPicker from "@/components/admin/MediaPicker";
 
 interface StreamingSource {
+  name: string;
   link: string;
   quality: string;
   type: string;
@@ -44,7 +45,7 @@ const TvChannelEdit = () => {
     display_order: 0,
   });
   const [streamingSources, setStreamingSources] = useState<StreamingSource[]>([
-    { link: "", quality: "HD", type: "m3u8" }
+    { name: "Nguồn 1", link: "", quality: "HD", type: "m3u8" }
   ]);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
 
@@ -89,7 +90,7 @@ const TvChannelEdit = () => {
         display_order: channel.display_order || 0,
       });
       const sources = Array.isArray(channel.streaming_sources) ? channel.streaming_sources : [];
-      setStreamingSources(sources.length > 0 ? (sources as unknown as StreamingSource[]) : [{ link: "", quality: "HD", type: "m3u8" }]);
+      setStreamingSources(sources.length > 0 ? (sources as unknown as StreamingSource[]) : [{ name: "Nguồn 1", link: "", quality: "HD", type: "m3u8" }]);
     }
   }, [channel]);
 
@@ -132,7 +133,8 @@ const TvChannelEdit = () => {
   });
 
   const addSource = () => {
-    setStreamingSources([...streamingSources, { link: "", quality: "HD", type: "m3u8" }]);
+    const newIndex = streamingSources.length + 1;
+    setStreamingSources([...streamingSources, { name: `Nguồn ${newIndex}`, link: "", quality: "HD", type: "m3u8" }]);
   };
 
   const removeSource = (index: number) => {
@@ -296,30 +298,14 @@ const TvChannelEdit = () => {
                 {streamingSources.map((source, index) => (
                   <div key={index} className="flex gap-3 items-start p-4 bg-muted/50 rounded-lg">
                     <div className="flex-1 space-y-3">
-                      <div className="space-y-2">
-                        <Label>Link nguồn</Label>
-                        <Input
-                          value={source.link}
-                          onChange={(e) => updateSource(index, "link", e.target.value)}
-                          placeholder="https://... (m3u8, embed, mp4)"
-                        />
-                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
-                          <Label>Loại</Label>
-                          <Select
-                            value={source.type}
-                            onValueChange={(value) => updateSource(index, "type", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="m3u8">M3U8 (HLS)</SelectItem>
-                              <SelectItem value="mp4">MP4</SelectItem>
-                              <SelectItem value="embed">Embed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Label>Tên nguồn</Label>
+                          <Input
+                            value={source.name || ""}
+                            onChange={(e) => updateSource(index, "name", e.target.value)}
+                            placeholder="VD: Nguồn HD, Nguồn backup"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Chất lượng</Label>
@@ -339,6 +325,30 @@ const TvChannelEdit = () => {
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Link nguồn</Label>
+                        <Input
+                          value={source.link}
+                          onChange={(e) => updateSource(index, "link", e.target.value)}
+                          placeholder="https://... (m3u8, embed, mp4)"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Loại</Label>
+                        <Select
+                          value={source.type}
+                          onValueChange={(value) => updateSource(index, "type", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="m3u8">M3U8 (HLS)</SelectItem>
+                            <SelectItem value="mp4">MP4</SelectItem>
+                            <SelectItem value="embed">Embed</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     {streamingSources.length > 1 && (

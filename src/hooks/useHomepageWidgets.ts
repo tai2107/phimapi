@@ -206,17 +206,25 @@ export function useWidgetMovies(widget: HomepageWidget | null) {
 
 export function useWidgetTvChannels(widget: HomepageWidget | null) {
   return useQuery({
-    queryKey: ["widget-tv-channels", widget?.id],
+    queryKey: ["widget-tv-channels", widget?.id, widget?.category_ids],
     queryFn: async () => {
       if (!widget) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("tv_channels")
         .select("*")
         .eq("is_active", true)
         .is("deleted_at", null)
-        .order("display_order", { ascending: true })
-        .limit(widget.posts_count);
+        .order("display_order", { ascending: true });
+
+      // Apply TV category filter
+      if (widget.category_ids && widget.category_ids.length > 0) {
+        query = query.in("category_id", widget.category_ids);
+      }
+
+      query = query.limit(widget.posts_count);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as TvChannel[];

@@ -11,6 +11,7 @@ import { Tv, Share2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StreamingSource {
+  name: string;
   link: string;
   quality: string;
   type: string;
@@ -153,19 +154,29 @@ const TvWatch = () => {
                 </div>
               </div>
 
-              {/* Quality Selector */}
-              {sources.length > 1 && (
-                <div className="mt-4 flex gap-2">
-                  {sources.map((source, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedSource === index ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedSource(index)}
-                    >
-                      {source.quality}
-                    </Button>
-                  ))}
+              {/* Stream Sources Selector */}
+              {sources.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Nguồn phát:</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {sources.map((source, index) => (
+                      <Button
+                        key={index}
+                        variant={selectedSource === index ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedSource(index)}
+                        className="flex items-center gap-2"
+                      >
+                        <span>{source.name || `Nguồn ${index + 1}`}</span>
+                        <span className="text-xs opacity-70">({source.quality})</span>
+                      </Button>
+                    ))}
+                  </div>
+                  {sources.length > 1 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Nếu nguồn này không hoạt động, vui lòng chọn nguồn khác
+                    </p>
+                  )}
                 </div>
               )}
 

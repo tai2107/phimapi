@@ -32,7 +32,7 @@ export function WidgetTvChannels({ widget }: WidgetTvChannelsProps) {
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-bold sm:text-xl">{widget.title}</h2>
         <Link 
-          to="/tv" 
+          to={widget.static_path || "/tv"} 
           className="text-sm text-primary hover:underline"
         >
           Xem tất cả →

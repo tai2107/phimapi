@@ -33,6 +33,7 @@ export function WidgetCarousel({ widget }: WidgetCarouselProps) {
       title={widget.title}
       movies={transformedMovies}
       loading={isLoading}
+      staticPath={widget.static_path}
     />
   );
 }

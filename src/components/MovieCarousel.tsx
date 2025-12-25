@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Movie } from "@/lib/api";
 import { MovieCard } from "./MovieCard";
 import { Button } from "./ui/button";
@@ -8,9 +9,10 @@ interface MovieCarouselProps {
   title: string;
   movies: Movie[];
   loading?: boolean;
+  staticPath?: string | null;
 }
 
-export function MovieCarousel({ title, movies, loading }: MovieCarouselProps) {
+export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
@@ -45,7 +47,17 @@ export function MovieCarousel({ title, movies, loading }: MovieCarouselProps) {
   return (
     <section className="py-4 group/section">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground">{title}</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-foreground">{title}</h2>
+          {staticPath && (
+            <Link 
+              to={staticPath} 
+              className="text-sm text-primary hover:underline"
+            >
+              Xem tất cả →
+            </Link>
+          )}
+        </div>
         
         {/* Navigation buttons - visible on hover (desktop) */}
         <div className="hidden gap-2 sm:flex opacity-0 transition-opacity group-hover/section:opacity-100">
