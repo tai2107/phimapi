@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import RichTextEditor from "@/components/admin/movie-edit/RichTextEditor";
 import SEOPreview, { CharacterCounter } from "@/components/admin/movie-edit/SEOPreview";
 import MediaPicker from "@/components/admin/MediaPicker";
+import { pingIndexNow } from "@/hooks/useIndexNow";
 
 interface PostFormData {
   title: string;
@@ -140,6 +141,12 @@ const PostEdit = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
       toast.success(isNew ? "Đã tạo bài viết mới" : "Đã lưu bài viết");
+      
+      // Auto-ping IndexNow for the post URL (only if published)
+      if (formData.status === "published" && formData.slug) {
+        pingIndexNow(`/bai-viet/${formData.slug}`);
+      }
+      
       if (isNew) {
         navigate("/admin/posts");
       }

@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.robots-txt]
 verify_jwt = false
+
+[functions.indexnow-ping]
+verify_jwt = true
+
+[functions.indexnow-verify]
+verify_jwt = false

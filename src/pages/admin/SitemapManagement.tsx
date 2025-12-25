@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { 
   RefreshCw, 
@@ -16,7 +20,11 @@ import {
   Film,
   Tv,
   Tag,
-  MapPin
+  MapPin,
+  Send,
+  Key,
+  Save,
+  Zap
 } from "lucide-react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -72,11 +80,15 @@ const sitemaps: Omit<SitemapStatus, "status">[] = [
 ];
 
 export default function SitemapManagement() {
+  const queryClient = useQueryClient();
   const [sitemapStatuses, setSitemapStatuses] = useState<Record<string, SitemapStatus>>({});
   const [isTestingAll, setIsTestingAll] = useState(false);
+  const [indexNowKey, setIndexNowKey] = useState("");
+  const [manualUrls, setManualUrls] = useState("");
+  const [isPinging, setIsPinging] = useState(false);
 
-  // Fetch site URL from settings
-  const { data: siteSettings } = useQuery({
+  // Fetch site settings
+  const { data: siteSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ["site-settings"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -91,8 +103,55 @@ export default function SitemapManagement() {
     },
   });
 
+  // Initialize indexNowKey from settings
+  useState(() => {
+    if (siteSettings?.indexnow_key) {
+      setIndexNowKey(siteSettings.indexnow_key);
+    }
+  });
+
+  // Update indexNowKey when settings load
+  if (siteSettings?.indexnow_key && indexNowKey === "" && !isLoadingSettings) {
+    setIndexNowKey(siteSettings.indexnow_key);
+  }
+
   const siteUrl = siteSettings?.site_url || window.location.origin;
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+
+  // Save IndexNow key mutation
+  const saveKeyMutation = useMutation({
+    mutationFn: async (key: string) => {
+      const { error } = await supabase
+        .from("site_settings")
+        .update({ setting_value: key })
+        .eq("setting_key", "indexnow_key");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
+      toast.success("Đã lưu IndexNow key");
+    },
+    onError: (error: any) => {
+      toast.error("Lỗi: " + error.message);
+    },
+  });
+
+  // Ping IndexNow mutation
+  const pingMutation = useMutation({
+    mutationFn: async (urls: string[]) => {
+      const response = await supabase.functions.invoke("indexnow-ping", {
+        body: { urls },
+      });
+      if (response.error) throw response.error;
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(`Đã gửi ${data.urls?.length || 0} URLs đến search engines`);
+    },
+    onError: (error: any) => {
+      toast.error("Lỗi: " + error.message);
+    },
+  });
 
   const getFullSitemapUrl = (path: string) => {
     if (path === "/sitemap.xml") {
@@ -117,8 +176,6 @@ export default function SitemapManagement() {
       }
 
       const text = await response.text();
-      
-      // Count URLs in sitemap
       const urlMatches = text.match(/<loc>/g);
       const urlCount = urlMatches ? urlMatches.length : 0;
 
@@ -158,6 +215,35 @@ export default function SitemapManagement() {
     window.open(url, "_blank");
   };
 
+  const handleManualPing = async () => {
+    const urls = manualUrls
+      .split("\n")
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+    
+    if (urls.length === 0) {
+      toast.error("Vui lòng nhập ít nhất một URL");
+      return;
+    }
+
+    setIsPinging(true);
+    try {
+      await pingMutation.mutateAsync(urls);
+      setManualUrls("");
+    } finally {
+      setIsPinging(false);
+    }
+  };
+
+  const generateRandomKey = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "";
+    for (let i = 0; i < 32; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setIndexNowKey(key);
+  };
+
   const getStatusBadge = (status?: SitemapStatus) => {
     if (!status) {
       return <Badge variant="outline">Chưa kiểm tra</Badge>;
@@ -195,169 +281,344 @@ export default function SitemapManagement() {
           <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
             <div className="flex-1">
-              <h1 className="text-lg font-semibold">Quản lý Sitemap</h1>
+              <h1 className="text-lg font-semibold">Quản lý Sitemap & IndexNow</h1>
             </div>
           </header>
           
           <main className="flex-1 p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">Sitemap & SEO</h1>
-                <p className="text-muted-foreground">
-                  Kiểm tra và quản lý các sitemap cho SEO
-                </p>
-              </div>
-              <Button onClick={testAllSitemaps} disabled={isTestingAll}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${isTestingAll ? "animate-spin" : ""}`} />
-                {isTestingAll ? "Đang kiểm tra..." : "Kiểm tra tất cả"}
-              </Button>
-            </div>
+            <Tabs defaultValue="sitemap" className="w-full">
+              <TabsList>
+                <TabsTrigger value="sitemap">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Sitemap
+                </TabsTrigger>
+                <TabsTrigger value="indexnow">
+                  <Zap className="h-4 w-4 mr-2" />
+                  IndexNow
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Site URL Warning */}
-            {!siteSettings?.site_url && (
-              <Card className="border-yellow-500/50 bg-yellow-500/10">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <XCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-yellow-500">Chưa cấu hình Site URL</p>
-                      <p className="text-sm text-muted-foreground">
-                        Vui lòng thêm <code className="bg-muted px-1 rounded">site_url</code> trong 
-                        Cài đặt Site để sitemap sử dụng đúng domain. 
-                        Hiện tại đang sử dụng: <code className="bg-muted px-1 rounded">{siteUrl}</code>
-                      </p>
-                    </div>
+              <TabsContent value="sitemap" className="space-y-6 mt-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Sitemap</h2>
+                    <p className="text-muted-foreground">
+                      Kiểm tra và quản lý các sitemap cho SEO
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  <Button onClick={testAllSitemaps} disabled={isTestingAll}>
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isTestingAll ? "animate-spin" : ""}`} />
+                    {isTestingAll ? "Đang kiểm tra..." : "Kiểm tra tất cả"}
+                  </Button>
+                </div>
 
-            {/* Sitemaps Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sitemaps.map((sitemap) => {
-                const status = sitemapStatuses[sitemap.name];
-                const Icon = sitemap.icon;
-                
-                return (
-                  <Card key={sitemap.name} className="relative">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <Icon className="h-5 w-5 text-primary" />
-                          </div>
-                          <CardTitle className="text-base">{sitemap.name}</CardTitle>
+                {/* Site URL Warning */}
+                {!siteSettings?.site_url && (
+                  <Card className="border-yellow-500/50 bg-yellow-500/10">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start gap-3">
+                        <XCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-yellow-500">Chưa cấu hình Site URL</p>
+                          <p className="text-sm text-muted-foreground">
+                            Vui lòng thêm <code className="bg-muted px-1 rounded">site_url</code> trong 
+                            Cài đặt Site để sitemap sử dụng đúng domain.
+                          </p>
                         </div>
-                        {getStatusBadge(status)}
-                      </div>
-                      <CardDescription className="text-sm">
-                        {sitemap.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <code className="bg-muted px-2 py-1 rounded flex-1 truncate">
-                          {sitemap.url}
-                        </code>
-                      </div>
-                      
-                      {status?.lastChecked && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          Kiểm tra lúc: {status.lastChecked.toLocaleTimeString()}
-                        </div>
-                      )}
-
-                      {status?.error && (
-                        <div className="text-xs text-red-500 bg-red-500/10 p-2 rounded">
-                          {status.error}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => testSitemap(sitemap)}
-                          disabled={status?.status === "loading"}
-                        >
-                          <RefreshCw className={`h-3 w-3 mr-1 ${status?.status === "loading" ? "animate-spin" : ""}`} />
-                          Test
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => openSitemap(sitemap)}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Xem
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
+                )}
 
-            {/* Robots.txt */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">robots.txt</CardTitle>
-                      <CardDescription>
-                        File hướng dẫn crawler của search engines
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => window.open(`https://${projectId}.supabase.co/functions/v1/robots-txt`, "_blank")}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Xem robots.txt
-                  </Button>
-                </div>
-              </CardHeader>
-            </Card>
+                {/* Sitemaps Grid */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {sitemaps.map((sitemap) => {
+                    const status = sitemapStatuses[sitemap.name];
+                    const Icon = sitemap.icon;
+                    
+                    return (
+                      <Card key={sitemap.name} className="relative">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 rounded-lg bg-primary/10">
+                                <Icon className="h-5 w-5 text-primary" />
+                              </div>
+                              <CardTitle className="text-base">{sitemap.name}</CardTitle>
+                            </div>
+                            {getStatusBadge(status)}
+                          </div>
+                          <CardDescription className="text-sm">
+                            {sitemap.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <code className="bg-muted px-2 py-1 rounded flex-1 truncate">
+                              {sitemap.url}
+                            </code>
+                          </div>
+                          
+                          {status?.lastChecked && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              Kiểm tra lúc: {status.lastChecked.toLocaleTimeString()}
+                            </div>
+                          )}
 
-            {/* SEO Tips */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Hướng dẫn SEO</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Submit Sitemap lên Google</h4>
-                    <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-                      <li>Truy cập Google Search Console</li>
-                      <li>Chọn website của bạn</li>
-                      <li>Vào mục Sitemaps</li>
-                      <li>Nhập URL: <code className="bg-muted px-1 rounded">/sitemap.xml</code></li>
-                      <li>Click Submit</li>
-                    </ol>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Submit lên Bing</h4>
-                    <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-                      <li>Truy cập Bing Webmaster Tools</li>
-                      <li>Chọn website của bạn</li>
-                      <li>Vào mục Sitemaps</li>
-                      <li>Nhập URL sitemap và submit</li>
-                    </ol>
-                  </div>
+                          {status?.error && (
+                            <div className="text-xs text-red-500 bg-red-500/10 p-2 rounded">
+                              {status.error}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => testSitemap(sitemap)}
+                              disabled={status?.status === "loading"}
+                            >
+                              <RefreshCw className={`h-3 w-3 mr-1 ${status?.status === "loading" ? "animate-spin" : ""}`} />
+                              Test
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => openSitemap(sitemap)}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Xem
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Robots.txt */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">robots.txt</CardTitle>
+                          <CardDescription>
+                            File hướng dẫn crawler của search engines
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(`https://${projectId}.supabase.co/functions/v1/robots-txt`, "_blank")}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Xem robots.txt
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="indexnow" className="space-y-6 mt-6">
+                {/* IndexNow Key Settings */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Key className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle>IndexNow API Key</CardTitle>
+                        <CardDescription>
+                          Key dùng để xác thực với IndexNow API (Bing, Yandex)
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="indexnow-key">IndexNow Key</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="indexnow-key"
+                          value={indexNowKey}
+                          onChange={(e) => setIndexNowKey(e.target.value)}
+                          placeholder="Nhập hoặc tạo key mới"
+                          className="font-mono"
+                        />
+                        <Button variant="outline" onClick={generateRandomKey}>
+                          Tạo key
+                        </Button>
+                        <Button 
+                          onClick={() => saveKeyMutation.mutate(indexNowKey)}
+                          disabled={saveKeyMutation.isPending}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          Lưu
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Sau khi lưu key, bạn cần tạo file <code className="bg-muted px-1 rounded">{indexNowKey}.txt</code> tại 
+                        root domain chứa chính key này để xác thực.
+                      </p>
+                    </div>
+
+                    {siteSettings?.indexnow_key && (
+                      <div className="p-3 bg-green-500/10 rounded-lg">
+                        <div className="flex items-center gap-2 text-green-500 text-sm">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>IndexNow key đã được cấu hình</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Verification URL: <code className="bg-muted px-1 rounded">{siteUrl}/{siteSettings.indexnow_key}.txt</code>
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Manual Ping */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Send className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle>Gửi thông báo Index thủ công</CardTitle>
+                        <CardDescription>
+                          Thông báo cho Bing, Yandex và Google về các URL mới hoặc cập nhật
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>URLs cần index (mỗi URL một dòng)</Label>
+                      <Textarea
+                        value={manualUrls}
+                        onChange={(e) => setManualUrls(e.target.value)}
+                        placeholder={`/phim/movie-slug-1
+/phim/movie-slug-2
+/bai-viet/post-slug`}
+                        className="min-h-[150px] font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Có thể nhập URL tương đối (bắt đầu bằng /) hoặc URL đầy đủ
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleManualPing} 
+                      disabled={isPinging || !siteSettings?.indexnow_key}
+                    >
+                      <Send className={`h-4 w-4 mr-2 ${isPinging ? "animate-pulse" : ""}`} />
+                      {isPinging ? "Đang gửi..." : "Gửi thông báo Index"}
+                    </Button>
+                    {!siteSettings?.indexnow_key && (
+                      <p className="text-xs text-yellow-500">
+                        Vui lòng cấu hình IndexNow key trước khi gửi thông báo
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Auto Index Info */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Zap className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle>Auto Index</CardTitle>
+                        <CardDescription>
+                          Tự động thông báo search engines khi có nội dung mới
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Film className="h-5 w-5 text-primary" />
+                          <span className="font-medium">Phim mới</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Khi thêm hoặc cập nhật phim, hệ thống sẽ tự động gửi thông báo đến Bing và Yandex qua IndexNow
+                        </p>
+                      </div>
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <span className="font-medium">Bài viết mới</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Khi đăng bài viết mới, URL sẽ được gửi tự động để index nhanh hơn
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-medium mb-2">Các search engines được hỗ trợ</h4>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="bg-blue-500/10">
+                          <Globe className="h-3 w-3 mr-1" />
+                          Bing (IndexNow)
+                        </Badge>
+                        <Badge variant="outline" className="bg-red-500/10">
+                          <Globe className="h-3 w-3 mr-1" />
+                          Yandex (IndexNow)
+                        </Badge>
+                        <Badge variant="outline" className="bg-green-500/10">
+                          <Globe className="h-3 w-3 mr-1" />
+                          Google (Sitemap Ping)
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* SEO Tips */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Hướng dẫn SEO</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Cài đặt IndexNow</h4>
+                        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                          <li>Tạo key ngẫu nhiên hoặc nhập key của bạn</li>
+                          <li>Lưu key vào hệ thống</li>
+                          <li>Tạo file <code className="bg-muted px-1 rounded">[key].txt</code> tại root</li>
+                          <li>File chứa chính key đó</li>
+                          <li>Xác minh tại Bing Webmaster Tools</li>
+                        </ol>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Lợi ích của IndexNow</h4>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Index nhanh hơn (vài phút thay vì vài ngày)</li>
+                          <li>Tiết kiệm crawl budget</li>
+                          <li>Hỗ trợ Bing, Yandex, Seznam</li>
+                          <li>Miễn phí và dễ tích hợp</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </main>
         </SidebarInset>
       </div>

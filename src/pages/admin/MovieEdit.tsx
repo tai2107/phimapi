@@ -13,6 +13,7 @@ import MovieInfoTab from "@/components/admin/movie-edit/MovieInfoTab";
 import ClassificationTab from "@/components/admin/movie-edit/ClassificationTab";
 import EpisodesTab from "@/components/admin/movie-edit/EpisodesTab";
 import OtherTab from "@/components/admin/movie-edit/OtherTab";
+import { pingIndexNow } from "@/hooks/useIndexNow";
 
 const MovieEdit = () => {
   const { id } = useParams<{ id: string }>();
@@ -203,6 +204,11 @@ const MovieEdit = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-movies"] });
       queryClient.invalidateQueries({ queryKey: ["movie-detail", id] });
       toast.success(isNew ? "Đã tạo phim mới" : "Đã lưu thay đổi");
+      
+      // Auto-ping IndexNow for the movie URL
+      if (formData.slug) {
+        pingIndexNow(`/phim/${formData.slug}`);
+      }
       
       if (isNew && movieId) {
         navigate(`/admin/movies/${movieId}`);
