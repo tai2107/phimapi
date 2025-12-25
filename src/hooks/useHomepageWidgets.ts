@@ -40,6 +40,18 @@ interface Movie {
   content: string | null;
 }
 
+export interface TvChannel {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logo_url: string | null;
+  streaming_sources: any[];
+  is_active: boolean;
+  category_id: string | null;
+  display_order: number;
+}
+
 export function useHomepageWidgets() {
   return useQuery({
     queryKey: ["homepage-widgets-public"],
@@ -189,6 +201,27 @@ export function useWidgetMovies(widget: HomepageWidget | null) {
       return filteredMovies.slice(0, widget.posts_count);
     },
     enabled: !!widget,
+  });
+}
+
+export function useWidgetTvChannels(widget: HomepageWidget | null) {
+  return useQuery({
+    queryKey: ["widget-tv-channels", widget?.id],
+    queryFn: async () => {
+      if (!widget) return [];
+
+      const { data, error } = await supabase
+        .from("tv_channels")
+        .select("*")
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("display_order", { ascending: true })
+        .limit(widget.posts_count);
+
+      if (error) throw error;
+      return data as TvChannel[];
+    },
+    enabled: !!widget && widget.widget_type === "tv_channels",
   });
 }
 
