@@ -81,15 +81,22 @@ export function MovieCarousel({ title, movies, loading, staticPath }: MovieCarou
       </div>
 
       {/* Movie grid - scrollable with responsive sizing */}
-      <div
-        ref={scrollRef}
-        className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 sm:mx-0 sm:px-0"
-      >
-        {movies.map((movie, index) => (
-          <div key={movie._id} className="flex-shrink-0 w-[100px] sm:w-[130px] md:w-[150px] lg:w-[160px]">
-            <MovieCard movie={movie} index={index} />
-          </div>
-        ))}
+      <div className="relative -mx-4 sm:mx-0">
+        <div
+          ref={scrollRef}
+          className="flex gap-2 sm:gap-3 overflow-x-auto scrollbar-hide pb-2 px-4 sm:px-0 scroll-pl-4 sm:scroll-pl-0"
+          style={{ scrollSnapType: 'x mandatory' }}
+        >
+          {movies.map((movie, index) => (
+            <div 
+              key={movie._id} 
+              className="flex-shrink-0 w-[100px] sm:w-[130px] md:w-[150px] lg:w-[160px]"
+              style={{ scrollSnapAlign: 'start' }}
+            >
+              <MovieCard movie={movie} index={index} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
