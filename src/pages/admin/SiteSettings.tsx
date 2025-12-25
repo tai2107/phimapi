@@ -27,6 +27,8 @@ export default function SiteSettings() {
     site_name: "",
     logo_url: "",
     favicon_url: "",
+    google_analytics_id: "",
+    google_tag_manager_id: "",
     head_html: "",
     footer_html: "",
   });
@@ -231,12 +233,49 @@ export default function SiteSettings() {
         </TabsContent>
 
         <TabsContent value="head" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Google Analytics (GA4)</CardTitle>
+              <CardDescription>
+                Nhập Measurement ID từ Google Analytics 4. Ví dụ: G-XXXXXXXXXX
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                value={settings.google_analytics_id}
+                onChange={(e) => setSettings({ ...settings, google_analytics_id: e.target.value })}
+                placeholder="G-XXXXXXXXXX"
+              />
+              <p className="text-xs text-muted-foreground">
+                Lấy ID tại: Google Analytics → Admin → Data Streams → Measurement ID
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Google Tag Manager</CardTitle>
+              <CardDescription>
+                Nhập Container ID từ Google Tag Manager. Ví dụ: GTM-XXXXXXX
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                value={settings.google_tag_manager_id}
+                onChange={(e) => setSettings({ ...settings, google_tag_manager_id: e.target.value })}
+                placeholder="GTM-XXXXXXX"
+              />
+              <p className="text-xs text-muted-foreground">
+                Lấy ID tại: Google Tag Manager → Container → Container ID (góc trên bên phải)
+              </p>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>HTML tùy chỉnh (Head)</CardTitle>
               <CardDescription>
-                Thêm mã HTML/CSS/JS vào phần &lt;head&gt; của trang. Ví dụ: Google Analytics, 
+                Thêm mã HTML/CSS/JS khác vào phần &lt;head&gt; của trang. Ví dụ: Facebook Pixel, 
                 custom fonts, meta tags...
               </CardDescription>
             </CardHeader>
@@ -244,9 +283,15 @@ export default function SiteSettings() {
               <Textarea
                 value={settings.head_html}
                 onChange={(e) => setSettings({ ...settings, head_html: e.target.value })}
-                placeholder={`<!-- Ví dụ: -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=GA_TRACKING_ID"></script>
+                placeholder={`<!-- Ví dụ: Facebook Pixel -->
+<script>
+  !function(f,b,e,v,n,t,s)...
+</script>
+
+<!-- Custom fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
+
+<!-- Custom meta tags -->
 <meta name="theme-color" content="#000000">`}
                 className="min-h-[200px] font-mono text-sm"
               />
