@@ -90,11 +90,95 @@ export async function fetchNewMovies(page: number = 1): Promise<MovieListRespons
   return response.json();
 }
 
-// Fetch movie by slug
+// Fetch movie by slug from Supabase
 export async function fetchMovieDetail(slug: string): Promise<MovieDetailResponse> {
-  const response = await fetch(`${API_BASE_URL}/phim/${slug}`);
-  if (!response.ok) throw new Error("Failed to fetch movie detail");
-  return response.json();
+  const { supabase } = await import("@/integrations/supabase/client");
+  
+  // Fetch movie with related data
+  const { data: movie, error } = await supabase
+    .from("movies")
+    .select(`
+      *,
+      movie_genres(genres(*)),
+      movie_countries(countries(*)),
+      movie_actors(actors(*)),
+      movie_directors(directors(*))
+    `)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error || !movie) {
+    throw new Error("Failed to fetch movie detail");
+  }
+
+  // Fetch episodes
+  const { data: episodes } = await supabase
+    .from("episodes")
+    .select("*")
+    .eq("movie_id", movie.id)
+    .order("server_name")
+    .order("slug");
+
+  // Transform data to match MovieDetailResponse format
+  const transformedMovie: MovieDetail = {
+    _id: movie.id,
+    name: movie.name,
+    slug: movie.slug,
+    origin_name: movie.origin_name || "",
+    poster_url: movie.poster_url || "",
+    thumb_url: movie.thumb_url || "",
+    year: movie.year || 0,
+    type: movie.type,
+    quality: movie.quality || "",
+    lang: movie.lang || "",
+    time: movie.time || "",
+    episode_current: movie.episode_current || "",
+    episode_total: movie.episode_total || "",
+    content: movie.content || "",
+    status: movie.status,
+    showtimes: "",
+    trailer_url: movie.trailer_url || "",
+    category: movie.movie_genres?.map((mg: any) => ({
+      id: mg.genres?.id,
+      name: mg.genres?.name,
+      slug: mg.genres?.slug,
+    })).filter((c: any) => c.id) || [],
+    country: movie.movie_countries?.map((mc: any) => ({
+      id: mc.countries?.id,
+      name: mc.countries?.name,
+      slug: mc.countries?.slug,
+    })).filter((c: any) => c.id) || [],
+    actor: movie.movie_actors?.map((ma: any) => ma.actors?.name).filter(Boolean) || [],
+    director: movie.movie_directors?.map((md: any) => md.directors?.name).filter(Boolean) || [],
+    episodes: [],
+  };
+
+  // Group episodes by server
+  const serverMap = new Map<string, Episode[]>();
+  (episodes || []).forEach((ep: any) => {
+    const serverName = ep.server_name || "Default";
+    if (!serverMap.has(serverName)) {
+      serverMap.set(serverName, []);
+    }
+    serverMap.get(serverName)!.push({
+      name: ep.name,
+      slug: ep.slug,
+      filename: ep.filename || "",
+      link_embed: ep.link_embed || "",
+      link_m3u8: ep.link_m3u8 || "",
+    });
+  });
+
+  const transformedEpisodes: ServerData[] = Array.from(serverMap.entries()).map(([name, data]) => ({
+    server_name: name,
+    server_data: data,
+  }));
+
+  return {
+    status: true,
+    movie: transformedMovie,
+    episodes: transformedEpisodes,
+  };
 }
 
 // Fetch movies by type
