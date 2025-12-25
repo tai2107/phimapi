@@ -4,6 +4,8 @@ import { Search, Menu, X, Film, Home, Tv, Clapperboard, Sparkles, User, LogOut, 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useSeoSettings } from "@/hooks/useSeoSettings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +29,10 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, hasAdminAccess, signOut } = useAuth();
+  const { data: siteSettings } = useSiteSettings();
+  const { data: seoSettings } = useSeoSettings();
+
+  const siteName = seoSettings?.site_name || siteSettings?.site_name || "KKPhim";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,12 +68,23 @@ export function Header() {
         <div className="container flex h-14 items-center justify-between px-4 sm:h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-              <Film className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-bold text-foreground">
-              <span className="text-gradient-primary">KK</span>Phim
-            </span>
+            {siteSettings?.logo_url ? (
+              <img 
+                src={siteSettings.logo_url} 
+                alt={siteName} 
+                className="h-8 w-auto"
+              />
+            ) : (
+              <>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+                  <Film className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-bold text-foreground">
+                  <span className="text-gradient-primary">{siteName.slice(0, 2)}</span>
+                  {siteName.slice(2)}
+                </span>
+              </>
+            )}
           </Link>
 
           {/* Desktop Navigation */}

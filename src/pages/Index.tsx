@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
+import { SEOHead } from "@/components/SEOHead";
 import { HeroSlider } from "@/components/HeroSlider";
 import { MovieCarousel } from "@/components/MovieCarousel";
 import { WidgetCarousel } from "@/components/WidgetCarousel";
@@ -49,6 +50,8 @@ const Index = () => {
 
   return (
     <Layout hideHeader>
+      <SEOHead />
+      
       {/* Hero section */}
       <div className="-mt-14 sm:-mt-16">
         {sliderWidgets.length > 0 ? (
@@ -97,18 +100,6 @@ const Index = () => {
           </>
         )}
       </div>
-
-      {/* Footer */}
-      <footer className="mt-8 border-t border-border bg-card py-6">
-        <div className="container px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © 2024 KKPhim - Xem phim online miễn phí
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Dữ liệu phim được cung cấp bởi KKPhim API
-          </p>
-        </div>
-      </footer>
     </Layout>
   );
 };
