@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { HelmetProvider } from "react-helmet-async";
 import { ProtectedAdminRoute } from "@/components/admin/ProtectedAdminRoute";
+import { TrackingScripts } from "@/components/TrackingScripts";
 import Index from "./pages/Index";
 import MovieDetail from "./pages/MovieDetail";
 import MovieList from "./pages/MovieList";
@@ -57,6 +58,7 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <TrackingScripts />
         <Toaster />
         <Sonner />
         <BrowserRouter>
