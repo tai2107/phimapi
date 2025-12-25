@@ -391,6 +391,72 @@ export type Database = {
           },
         ]
       }
+      movie_categories: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+          seo_description: string | null
+          seo_keyword: string | null
+          seo_title: string | null
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          seo_description?: string | null
+          seo_keyword?: string | null
+          seo_title?: string | null
+          slug?: string
+        }
+        Relationships: []
+      }
+      movie_category_map: {
+        Row: {
+          category_id: string
+          id: string
+          movie_id: string
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          movie_id: string
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          movie_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_category_map_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "movie_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_category_map_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movie_countries: {
         Row: {
           country_id: string
@@ -833,6 +899,89 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      tv_channel_categories: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      tv_channels: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          schedule_code: string | null
+          slug: string
+          streaming_sources: Json
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          schedule_code?: string | null
+          slug: string
+          streaming_sources?: Json
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          schedule_code?: string | null
+          slug?: string
+          streaming_sources?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_channels_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "tv_channel_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_permissions: {
         Row: {
