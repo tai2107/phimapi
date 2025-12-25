@@ -38,6 +38,7 @@ import TaxonomyList from "./pages/TaxonomyList";
 import TvList from "./pages/TvList";
 import TvWatch from "./pages/TvWatch";
 import NotFound from "./pages/NotFound";
+import ContentAI from "./pages/admin/ContentAI";
 import { Header } from "./components/Header";
 
 const queryClient = new QueryClient({
@@ -231,6 +232,14 @@ const App = () => (
               element={
                 <ProtectedAdminRoute>
                   <TvChannelEdit />
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/content-ai"
+              element={
+                <ProtectedAdminRoute>
+                  <ContentAI />
                 </ProtectedAdminRoute>
               }
             />
