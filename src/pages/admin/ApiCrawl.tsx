@@ -12,7 +12,7 @@ import {
   Shuffle,
   Play,
 } from "lucide-react";
-import { fetchNewMovies, fetchMovieDetail, fetchCategories, fetchCountries } from "@/lib/api";
+import { fetchNewMovies, fetchMovieDetailFromAPI, fetchCategories, fetchCountries } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -169,7 +169,7 @@ const ApiCrawl = () => {
     const timestamp = new Date().toISOString();
     
     try {
-      const movieData = await fetchMovieDetail(movieSlug);
+      const movieData = await fetchMovieDetailFromAPI(movieSlug);
       if (!movieData || !movieData.movie) {
         return { url, timestamp, status: "error", message: `Không tìm thấy phim: ${movieSlug}` };
       }
