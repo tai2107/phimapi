@@ -510,10 +510,11 @@ const ApiCrawl = () => {
         .single();
 
       for (let i = 0; i < urls.length; i++) {
-        const input = urls[i];
+        const input = urls[i].trim();
         // Support both URL format and slug format
-        const match = input.match(/phim\/([^\/\?]+)/);
-        const slug = match ? match[1] : input.trim();
+        // Match patterns: /phim/slug, /film/slug, /api/film/slug
+        const match = input.match(/(?:phim|film)\/([^\/\?\s]+)(?:\?.*)?$/);
+        const slug = match ? match[1] : input;
         
         if (!slug) {
           const errorResult: CrawlResult = {
