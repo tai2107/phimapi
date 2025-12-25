@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import VideoPlayer from "@/components/VideoPlayer";
 import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
 
 const MovieDetail = () => {
@@ -74,11 +75,10 @@ const MovieDetail = () => {
         <div className="bg-cinema-dark">
           <div className="container px-0 sm:px-4">
             <div className="relative aspect-video w-full bg-black">
-              <iframe
-                src={currentEpisode.link_embed}
-                className="h-full w-full"
-                allowFullScreen
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              <VideoPlayer
+                linkEmbed={currentEpisode.link_embed}
+                linkM3u8={currentEpisode.link_m3u8}
+                linkMp4={currentEpisode.link_mp4}
               />
             </div>
           </div>
