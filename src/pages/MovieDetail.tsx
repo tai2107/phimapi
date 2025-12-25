@@ -230,7 +230,7 @@ const MovieDetail = () => {
 
               {/* Countries */}
               {movie.country && movie.country.length > 0 && (
-                <div className="mb-4 flex flex-wrap items-center gap-2">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Globe className="h-4 w-4 text-muted-foreground" />
                   {movie.country.map((c: any) => (
                     <span
@@ -240,6 +240,39 @@ const MovieDetail = () => {
                       {c.name}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* Directors */}
+              {movie.director && movie.director.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Đạo diễn:</span>
+                  {movie.director.map((d: any) => (
+                    <span
+                      key={d.slug}
+                      className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                    >
+                      {d.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Actors */}
+              {movie.actor && movie.actor.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Diễn viên:</span>
+                  {movie.actor.slice(0, 10).map((a: any) => (
+                    <span
+                      key={a.slug}
+                      className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground"
+                    >
+                      {a.name}
+                    </span>
+                  ))}
+                  {movie.actor.length > 10 && (
+                    <span className="text-xs text-muted-foreground">+{movie.actor.length - 10} khác</span>
+                  )}
                 </div>
               )}
 

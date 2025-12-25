@@ -143,14 +143,11 @@ const SeoSettings = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="homepage">Trang chủ</TabsTrigger>
           <TabsTrigger value="movie">Phim</TabsTrigger>
           <TabsTrigger value="genre">Thể loại</TabsTrigger>
           <TabsTrigger value="country">Quốc gia</TabsTrigger>
-          <TabsTrigger value="actor">Diễn viên</TabsTrigger>
-          <TabsTrigger value="director">Đạo diễn</TabsTrigger>
-          <TabsTrigger value="tag">Tags</TabsTrigger>
           <TabsTrigger value="slug">Slug</TabsTrigger>
         </TabsList>
 
@@ -376,125 +373,6 @@ const SeoSettings = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab SEO Diễn viên */}
-        <TabsContent value="actor" className="space-y-6">
-          <VariablesInfo />
-          <Card>
-            <CardHeader>
-              <CardTitle>SEO Diễn viên</CardTitle>
-              <CardDescription>Cấu hình SEO cho trang diễn viên</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tiêu đề SEO</Label>
-                <Input
-                  value={settings.actor_seo_title || ""}
-                  onChange={(e) => updateSetting("actor_seo_title", e.target.value)}
-                  placeholder="Phim của %dienvien% - %sitename%"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Thẻ mô tả</Label>
-                <Textarea
-                  value={settings.actor_seo_description || ""}
-                  onChange={(e) => updateSetting("actor_seo_description", e.target.value)}
-                  placeholder="Tổng hợp các bộ phim có diễn viên %dienvien% tại %sitename%"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Keywords</Label>
-                <Input
-                  value={settings.actor_seo_keywords || ""}
-                  onChange={(e) => updateSetting("actor_seo_keywords", e.target.value)}
-                  placeholder="phim %dienvien%, diễn viên %dienvien%"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab SEO Đạo diễn */}
-        <TabsContent value="director" className="space-y-6">
-          <VariablesInfo />
-          <Card>
-            <CardHeader>
-              <CardTitle>SEO Đạo diễn</CardTitle>
-              <CardDescription>Cấu hình SEO cho trang đạo diễn</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tiêu đề SEO</Label>
-                <Input
-                  value={settings.director_seo_title || ""}
-                  onChange={(e) => updateSetting("director_seo_title", e.target.value)}
-                  placeholder="Phim của đạo diễn %daodien% - %sitename%"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Thẻ mô tả</Label>
-                <Textarea
-                  value={settings.director_seo_description || ""}
-                  onChange={(e) => updateSetting("director_seo_description", e.target.value)}
-                  placeholder="Tổng hợp các bộ phim của đạo diễn %daodien% tại %sitename%"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Keywords</Label>
-                <Input
-                  value={settings.director_seo_keywords || ""}
-                  onChange={(e) => updateSetting("director_seo_keywords", e.target.value)}
-                  placeholder="phim %daodien%, đạo diễn %daodien%"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab SEO Tags */}
-        <TabsContent value="tag" className="space-y-6">
-          <VariablesInfo />
-          <Card>
-            <CardHeader>
-              <CardTitle>SEO Tags</CardTitle>
-              <CardDescription>Cấu hình SEO cho trang từ khóa</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tiêu đề SEO</Label>
-                <Input
-                  value={settings.tag_seo_title || ""}
-                  onChange={(e) => updateSetting("tag_seo_title", e.target.value)}
-                  placeholder="Từ khóa %tag% - %sitename%"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Thẻ mô tả</Label>
-                <Textarea
-                  value={settings.tag_seo_description || ""}
-                  onChange={(e) => updateSetting("tag_seo_description", e.target.value)}
-                  placeholder="Xem các phim liên quan đến %tag% tại %sitename%"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Keywords</Label>
-                <Input
-                  value={settings.tag_seo_keywords || ""}
-                  onChange={(e) => updateSetting("tag_seo_keywords", e.target.value)}
-                  placeholder="%tag%, phim %tag%"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Tab SEO Slug */}
         <TabsContent value="slug" className="space-y-6">
