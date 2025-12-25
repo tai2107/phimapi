@@ -88,7 +88,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const generatedContent = data.choices?.[0]?.message?.content;
+    let generatedContent = data.choices?.[0]?.message?.content;
 
     if (!generatedContent) {
       console.error("No content in response:", data);
@@ -97,6 +97,13 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Remove markdown code block wrappers if present
+    generatedContent = generatedContent
+      .replace(/^```html\s*/i, '')
+      .replace(/^```\s*/gm, '')
+      .replace(/\s*```$/g, '')
+      .trim();
 
     console.log("Content generated successfully, length:", generatedContent.length);
 
