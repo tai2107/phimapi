@@ -262,6 +262,57 @@
   .ProseMirror pre {
     @apply bg-muted p-4 rounded-lg my-4 overflow-x-auto;
   }
+
+  /* Prose content styles for public pages */
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    @apply text-foreground font-semibold;
+  }
+
+  .prose h2 {
+    @apply text-xl mt-4 mb-2;
+  }
+
+  .prose h3 {
+    @apply text-lg mt-3 mb-2;
+  }
+
+  .prose h4 {
+    @apply text-base mt-2 mb-1;
+  }
+
+  .prose p {
+    @apply mb-3 text-muted-foreground;
+  }
+
+  .prose ul,
+  .prose ol {
+    @apply pl-5 mb-3 text-muted-foreground;
+  }
+
+  .prose ul {
+    @apply list-disc;
+  }
+
+  .prose ol {
+    @apply list-decimal;
+  }
+
+  .prose strong {
+    @apply text-foreground font-semibold;
+  }
+
+  .prose a {
+    @apply text-primary hover:underline;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-primary pl-4 italic my-4 text-muted-foreground;
+  }
 }
 
 @layer utilities {

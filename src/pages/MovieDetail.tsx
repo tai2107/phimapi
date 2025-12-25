@@ -359,7 +359,7 @@ const MovieDetail = () => {
             <div className="mt-6 rounded-lg bg-card p-4">
               <h2 className="mb-3 text-lg font-semibold text-foreground">Nội dung phim</h2>
               <div
-                className={`text-sm leading-relaxed text-muted-foreground ${
+                className={`prose prose-sm dark:prose-invert max-w-none text-muted-foreground ${
                   !showFullContent ? "line-clamp-3" : ""
                 }`}
                 dangerouslySetInnerHTML={{ __html: movie.content }}
