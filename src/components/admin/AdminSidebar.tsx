@@ -64,7 +64,7 @@ const tvManagementItems = [
   { title: "Danh mục kênh", url: "/admin/tv-channel-categories", icon: FolderOpen },
 ];
 
-import { Sparkles, Map } from "lucide-react";
+import { Sparkles, Map, BookOpen } from "lucide-react";
 
 const systemNavItems = [
   { title: "Thống kê", url: "/admin/analytics", icon: BarChart3 },
@@ -76,6 +76,7 @@ const systemNavItems = [
   { title: "SEO", url: "/admin/seo", icon: Search },
   { title: "Sitemap", url: "/admin/sitemap", icon: Map },
   { title: "Cài đặt Site", url: "/admin/site-settings", icon: Settings },
+  { title: "Hướng dẫn", url: "/admin/docs", icon: BookOpen },
 ];
 
 export function AdminSidebar() {
