@@ -91,6 +91,13 @@ export async function fetchNewMovies(page: number = 1): Promise<MovieListRespons
   return response.json();
 }
 
+// Fetch movie detail from external API (for crawling)
+export async function fetchMovieDetailFromAPI(slug: string): Promise<MovieDetailResponse> {
+  const response = await fetch(`${API_BASE_URL}/phim/${slug}`);
+  if (!response.ok) throw new Error("Failed to fetch movie detail from API");
+  return response.json();
+}
+
 // Fetch movie by slug from Supabase
 export async function fetchMovieDetail(slug: string): Promise<MovieDetailResponse> {
   const { supabase } = await import("@/integrations/supabase/client");
