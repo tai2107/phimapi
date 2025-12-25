@@ -64,13 +64,14 @@ const tvManagementItems = [
   { title: "Danh mục kênh", url: "/admin/tv-channel-categories", icon: FolderOpen },
 ];
 
-import { Sparkles, Map, BookOpen } from "lucide-react";
+import { Sparkles, Map, BookOpen, Megaphone } from "lucide-react";
 
 const systemNavItems = [
   { title: "Thống kê", url: "/admin/analytics", icon: BarChart3 },
   { title: "Người dùng", url: "/admin/users", icon: Users },
   { title: "Crawl Phim", url: "/admin/api", icon: Database },
   { title: "Content AI", url: "/admin/content-ai", icon: Sparkles },
+  { title: "Quảng cáo", url: "/admin/ads", icon: Megaphone },
   { title: "Thông báo", url: "/admin/notifications", icon: Bell },
   { title: "Thùng rác", url: "/admin/trash", icon: Trash2 },
   { title: "SEO", url: "/admin/seo", icon: Search },

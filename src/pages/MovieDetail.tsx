@@ -21,6 +21,9 @@ import { RelatedMovies } from "@/components/RelatedMovies";
 import TableOfContents from "@/components/TableOfContents";
 import MovieSchema from "@/components/MovieSchema";
 import { FacebookComments } from "@/components/FacebookComments";
+import { MovieRating } from "@/components/MovieRating";
+import { ShareButtons } from "@/components/ShareButtons";
+import { Advertisement, usePopupAds } from "@/components/Advertisement";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
 
@@ -35,6 +38,9 @@ const MovieDetail = () => {
   const [sourceType, setSourceType] = useState<SourceType>("auto");
 
   const { data: siteSettings } = useSiteSettings();
+
+  // Initialize popup ads for movie page
+  usePopupAds("movie");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["movie", slug],
@@ -363,8 +369,21 @@ const MovieDetail = () => {
                   Xem Phim
                 </Button>
               )}
+
+              {/* Rating & Share */}
+              <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                {movieId && <MovieRating movieId={movieId} />}
+                <ShareButtons 
+                  url={`${siteSettings?.site_url || window.location.origin}/phim/${slug}`} 
+                  title={movie.name}
+                  compact
+                />
+              </div>
             </div>
           </div>
+
+          {/* Advertisement - Sidebar */}
+          <Advertisement position="sidebar" page="movie" />
 
           {/* Table of Contents */}
           {movie.content && <TableOfContents content={movie.content} />}

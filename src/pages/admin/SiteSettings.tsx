@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Upload, Image, Code, FileText, Settings } from "lucide-react";
+import { Save, Image, Code, FileText, Settings, Palette } from "lucide-react";
 import MediaPicker from "@/components/admin/MediaPicker";
+import { googleFonts } from "@/components/ThemeProvider";
 
 interface SiteSetting {
   id: string;
@@ -30,6 +32,9 @@ export default function SiteSettings() {
     google_analytics_id: "",
     google_tag_manager_id: "",
     facebook_app_id: "",
+    theme_primary_color: "#e11d48",
+    theme_font_family: "Be Vietnam Pro",
+    site_language: "vi",
     head_html: "",
     footer_html: "",
   });
@@ -109,10 +114,14 @@ export default function SiteSettings() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">
             <Settings className="mr-2 h-4 w-4" />
             Cài đặt chung
+          </TabsTrigger>
+          <TabsTrigger value="theme">
+            <Palette className="mr-2 h-4 w-4" />
+            Giao diện
           </TabsTrigger>
           <TabsTrigger value="head">
             <Code className="mr-2 h-4 w-4" />
@@ -229,6 +238,76 @@ export default function SiteSettings() {
                   Chọn ảnh
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="theme" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Màu chủ đạo</CardTitle>
+              <CardDescription>Chọn màu chính cho giao diện website</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center gap-4">
+                <input
+                  type="color"
+                  value={settings.theme_primary_color || "#e11d48"}
+                  onChange={(e) => setSettings({ ...settings, theme_primary_color: e.target.value })}
+                  className="h-10 w-20 cursor-pointer rounded border"
+                />
+                <Input
+                  value={settings.theme_primary_color}
+                  onChange={(e) => setSettings({ ...settings, theme_primary_color: e.target.value })}
+                  placeholder="#e11d48"
+                  className="w-32"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Font chữ</CardTitle>
+              <CardDescription>Chọn font chữ từ Google Fonts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={settings.theme_font_family || "Be Vietnam Pro"}
+                onValueChange={(value) => setSettings({ ...settings, theme_font_family: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(googleFonts).map((font) => (
+                    <SelectItem key={font} value={font}>
+                      {font}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ngôn ngữ</CardTitle>
+              <CardDescription>Ngôn ngữ mặc định của website</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={settings.site_language || "vi"}
+                onValueChange={(value) => setSettings({ ...settings, site_language: value })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vi">Tiếng Việt</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </TabsContent>
