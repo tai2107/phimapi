@@ -10,7 +10,9 @@ import {
   Globe,
   Tag,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Server,
+  Radio
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -18,12 +20,15 @@ import VideoPlayer from "@/components/VideoPlayer";
 import { RelatedMovies } from "@/components/RelatedMovies";
 import { fetchMovieDetail, getThumbUrl, getPosterUrl } from "@/lib/api";
 
+type SourceType = "auto" | "m3u8" | "embed";
+
 const MovieDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const [selectedServer, setSelectedServer] = useState(0);
   const [selectedEpisode, setSelectedEpisode] = useState(0);
   const [showFullContent, setShowFullContent] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [sourceType, setSourceType] = useState<SourceType>("auto");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["movie", slug],
@@ -37,17 +42,24 @@ const MovieDetail = () => {
     
     const episodes = data.episodes;
     const currentServer = episodes[selectedServer];
-    const hasNextEpisode = currentServer?.server_data?.length > selectedEpisode + 1;
-    const hasNextServer = episodes.length > selectedServer + 1;
+    const currentEp = currentServer?.server_data?.[selectedEpisode];
     
-    // Try next server first
+    // If using auto or m3u8 and it fails, try embed
+    if (sourceType === "auto" || sourceType === "m3u8") {
+      if (currentEp?.link_embed) {
+        setSourceType("embed");
+        return;
+      }
+    }
+    
+    // Try next server
+    const hasNextServer = episodes.length > selectedServer + 1;
     if (hasNextServer) {
       setSelectedServer(prev => prev + 1);
       setSelectedEpisode(0);
-    } else if (hasNextEpisode) {
-      // Or stay on same server but try again
+      setSourceType("auto");
     }
-  }, [data?.episodes, selectedServer, selectedEpisode]);
+  }, [data?.episodes, selectedServer, selectedEpisode, sourceType]);
 
   if (isLoading) {
     return (
@@ -97,37 +109,81 @@ const MovieDetail = () => {
           <div className="container px-0 sm:px-4">
             <div className="relative aspect-video w-full bg-black">
               <VideoPlayer
-                linkEmbed={currentEpisode.link_embed}
-                linkM3u8={currentEpisode.link_m3u8}
+                linkEmbed={sourceType === "m3u8" ? undefined : currentEpisode.link_embed}
+                linkM3u8={sourceType === "embed" ? undefined : currentEpisode.link_m3u8}
                 linkMp4={currentEpisode.link_mp4}
                 onError={handlePlayerError}
               />
             </div>
             
-            {/* Server/Source Selector when playing */}
-            {episodes.length > 1 && (
-              <div className="mt-4 px-4 sm:px-0">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Nguồn phát:</h3>
-                <div className="flex flex-wrap gap-2">
-                  {episodes.map((server: any, index: number) => (
-                    <Button
-                      key={index}
-                      variant={selectedServer === index ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedServer(index);
-                        setSelectedEpisode(0);
-                      }}
-                    >
-                      {server.server_name}
-                    </Button>
-                  ))}
+            {/* Source Selection */}
+            <div className="mt-4 px-4 sm:px-0 space-y-3">
+              {/* Server selector */}
+              {episodes.length > 1 && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <Server className="h-4 w-4" />
+                    Server:
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {episodes.map((server: any, index: number) => (
+                      <Button
+                        key={index}
+                        variant={selectedServer === index ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setSelectedServer(index);
+                          setSelectedEpisode(0);
+                          setSourceType("auto");
+                        }}
+                      >
+                        {server.server_name}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Nếu nguồn này không hoạt động, vui lòng chọn nguồn khác
-                </p>
-              </div>
-            )}
+              )}
+
+              {/* Source type selector (m3u8/embed) */}
+              {(currentEpisode.link_m3u8 || currentEpisode.link_embed) && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    <Radio className="h-4 w-4" />
+                    Nguồn phát:
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={sourceType === "auto" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSourceType("auto")}
+                    >
+                      Tự động
+                    </Button>
+                    {currentEpisode.link_m3u8 && (
+                      <Button
+                        variant={sourceType === "m3u8" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSourceType("m3u8")}
+                      >
+                        M3U8 (HD)
+                      </Button>
+                    )}
+                    {currentEpisode.link_embed && (
+                      <Button
+                        variant={sourceType === "embed" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSourceType("embed")}
+                      >
+                        Embed
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Nếu nguồn này không hoạt động, vui lòng chọn nguồn khác
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
