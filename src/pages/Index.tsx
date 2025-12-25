@@ -5,6 +5,7 @@ import { HeroSlider } from "@/components/HeroSlider";
 import { MovieCarousel } from "@/components/MovieCarousel";
 import { WidgetCarousel } from "@/components/WidgetCarousel";
 import { WidgetSlider } from "@/components/WidgetSlider";
+import { WidgetTvChannels } from "@/components/WidgetTvChannels";
 import { fetchNewMovies, fetchMoviesByType } from "@/lib/api";
 import { useHomepageWidgets } from "@/hooks/useHomepageWidgets";
 
@@ -42,11 +43,24 @@ const Index = () => {
   const singleList = singleMovies?.data?.items || [];
   const animationList = animationData?.data?.items || [];
 
-  // Get slider widgets and carousel widgets
+  // Get slider widgets and other widgets
   const sliderWidgets = widgets?.filter(w => w.widget_type === "slider") || [];
   const carouselWidgets = widgets?.filter(w => w.widget_type === "carousel") || [];
+  const tvWidgets = widgets?.filter(w => w.widget_type === "tv_channels") || [];
 
   const hasWidgets = widgets && widgets.length > 0;
+
+  // Render widget based on type
+  const renderWidget = (widget: typeof widgets extends (infer T)[] | undefined ? T : never) => {
+    switch (widget.widget_type) {
+      case "carousel":
+        return <WidgetCarousel key={widget.id} widget={widget} />;
+      case "tv_channels":
+        return <WidgetTvChannels key={widget.id} widget={widget} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <Layout hideHeader>
@@ -70,10 +84,10 @@ const Index = () => {
       {/* Movie carousels */}
       <div className="container px-4 sm:px-6">
         {hasWidgets ? (
-          // Render widgets from database
-          carouselWidgets.map((widget) => (
-            <WidgetCarousel key={widget.id} widget={widget} />
-          ))
+          // Render widgets from database (excluding slider which is rendered above)
+          widgets
+            ?.filter(w => w.widget_type !== "slider")
+            .map(renderWidget)
         ) : (
           // Fallback to API data
           <>

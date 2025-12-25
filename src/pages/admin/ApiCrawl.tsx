@@ -234,6 +234,31 @@ const ApiCrawl = () => {
         movieId = newMovie.id;
       }
 
+      // Auto-create movie category based on type
+      if (movie.type) {
+        const categoryMap: Record<string, { name: string; slug: string }> = {
+          "single": { name: "Phim lẻ", slug: "phim-le" },
+          "series": { name: "Phim bộ", slug: "phim-bo" },
+          "hoathinh": { name: "Phim hoạt hình", slug: "phim-hoat-hinh" },
+          "tvshows": { name: "TV Shows", slug: "tv-shows" },
+        };
+        
+        const categoryInfo = categoryMap[movie.type];
+        if (categoryInfo) {
+          const { data: category } = await supabase
+            .from("movie_categories")
+            .upsert({ name: categoryInfo.name, slug: categoryInfo.slug }, { onConflict: "slug" })
+            .select("id")
+            .single();
+          
+          if (category) {
+            await supabase
+              .from("movie_category_map")
+              .upsert({ movie_id: movieId, category_id: category.id }, { onConflict: "movie_id,category_id" });
+          }
+        }
+      }
+
       // Process genres
       if (movie.category && movie.category.length > 0) {
         const filteredCategories = movie.category.filter(

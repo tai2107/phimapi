@@ -88,6 +88,7 @@ const sortOptions = [
 const widgetTypeOptions = [
   { value: "carousel", label: "Carousel (Phim)" },
   { value: "slider", label: "Slider (Poster)" },
+  { value: "tv_channels", label: "TV Channels" },
 ];
 
 export default function WidgetsManagement() {
