@@ -1,6 +1,19 @@
-// KKPhim API client
+// Movie API client - supports multiple sources
 
-const API_BASE_URL = "https://phimapi.com";
+export type ApiSource = "phimapi" | "nguonc";
+
+const API_SOURCES = {
+  phimapi: {
+    base: "https://phimapi.com",
+    list: "/danh-sach/phim-moi-cap-nhat",
+    detail: "/phim",
+  },
+  nguonc: {
+    base: "https://phim.nguonc.com/api",
+    list: "/films/phim-moi-cap-nhat",
+    detail: "/film",
+  },
+};
 
 export interface Movie {
   _id: string;
@@ -84,18 +97,158 @@ export interface MovieDetailResponse {
   episodes: ServerData[];
 }
 
-// Fetch new updated movies
-export async function fetchNewMovies(page: number = 1): Promise<MovieListResponse> {
-  const response = await fetch(`${API_BASE_URL}/danh-sach/phim-moi-cap-nhat?page=${page}`);
+// Fetch new updated movies from specified source
+export async function fetchNewMovies(page: number = 1, source: ApiSource = "phimapi"): Promise<MovieListResponse> {
+  const api = API_SOURCES[source];
+  const response = await fetch(`${api.base}${api.list}?page=${page}`);
   if (!response.ok) throw new Error("Failed to fetch movies");
-  return response.json();
+  
+  const data = await response.json();
+  
+  if (source === "nguonc") {
+    // Transform nguonc response to standard format
+    return {
+      status: data.status === "success",
+      items: (data.items || []).map((item: any) => ({
+        _id: item.id || item.slug,
+        name: item.name,
+        slug: item.slug,
+        origin_name: item.original_name || item.origin_name || "",
+        poster_url: item.poster_url || "",
+        thumb_url: item.thumb_url || "",
+        year: parseInt(item.year) || 0,
+        type: item.type || "series",
+        quality: item.quality || "",
+        lang: item.language || "",
+        time: item.time || "",
+        episode_current: item.current_episode || item.episode_current || "",
+        episode_total: String(item.total_episodes || item.episode_total || ""),
+        category: [],
+        country: [],
+      })),
+      pagination: {
+        totalItems: data.paginate?.total_items || data.total || 0,
+        totalItemsPerPage: data.paginate?.items_per_page || 24,
+        currentPage: data.paginate?.current_page || page,
+        totalPages: data.paginate?.total_pages || 1,
+      },
+    };
+  }
+  
+  return data;
 }
 
 // Fetch movie detail from external API (for crawling)
-export async function fetchMovieDetailFromAPI(slug: string): Promise<MovieDetailResponse> {
-  const response = await fetch(`${API_BASE_URL}/phim/${slug}`);
+export async function fetchMovieDetailFromAPI(slug: string, source: ApiSource = "phimapi"): Promise<MovieDetailResponse> {
+  const api = API_SOURCES[source];
+  const response = await fetch(`${api.base}${api.detail}/${slug}`);
   if (!response.ok) throw new Error("Failed to fetch movie detail from API");
-  return response.json();
+  
+  const data = await response.json();
+  
+  if (source === "nguonc") {
+    const movie = data.movie;
+    if (!movie) throw new Error("Movie not found");
+    
+    // Parse categories from nguonc format
+    const categories: Category[] = [];
+    const countries: Country[] = [];
+    
+    if (movie.category) {
+      Object.values(movie.category).forEach((catGroup: any) => {
+        if (catGroup.group?.name === "Thể loại" && catGroup.list) {
+          catGroup.list.forEach((item: any) => {
+            categories.push({ id: item.id, name: item.name, slug: createSlugFromName(item.name) });
+          });
+        }
+        if (catGroup.group?.name === "Quốc gia" && catGroup.list) {
+          catGroup.list.forEach((item: any) => {
+            countries.push({ id: item.id, name: item.name, slug: createSlugFromName(item.name) });
+          });
+        }
+      });
+    }
+    
+    // Parse episodes from nguonc format
+    const episodes: ServerData[] = (movie.episodes || []).map((server: any) => ({
+      server_name: server.server_name,
+      server_data: (server.items || []).map((ep: any) => ({
+        name: ep.name,
+        slug: ep.slug,
+        filename: "",
+        link_embed: ep.embed || "",
+        link_m3u8: ep.m3u8 || "",
+        link_mp4: "",
+      })),
+    }));
+    
+    // Parse actors/directors
+    const actors = movie.casts ? movie.casts.split(",").map((a: string) => a.trim()).filter(Boolean) : [];
+    const directors = movie.director ? (Array.isArray(movie.director) ? movie.director : [movie.director]).filter(Boolean) : [];
+    
+    // Determine type
+    let type = "series";
+    if (movie.category) {
+      Object.values(movie.category).forEach((catGroup: any) => {
+        if (catGroup.group?.name === "Định dạng" && catGroup.list) {
+          catGroup.list.forEach((item: any) => {
+            if (item.name.toLowerCase().includes("lẻ") || item.name.toLowerCase().includes("single")) {
+              type = "single";
+            } else if (item.name.toLowerCase().includes("hoạt hình")) {
+              type = "hoathinh";
+            } else if (item.name.toLowerCase().includes("tv show")) {
+              type = "tvshows";
+            }
+          });
+        }
+      });
+    }
+    
+    return {
+      status: true,
+      movie: {
+        _id: movie.id || movie.slug,
+        name: movie.name,
+        slug: movie.slug,
+        origin_name: movie.original_name || "",
+        poster_url: movie.poster_url || "",
+        thumb_url: movie.thumb_url || "",
+        year: parseInt(movie.category?.["3"]?.list?.[0]?.name) || new Date().getFullYear(),
+        type,
+        quality: movie.quality || "",
+        lang: movie.language || "",
+        time: movie.time || "",
+        episode_current: movie.current_episode || "",
+        episode_total: String(movie.total_episodes || ""),
+        content: movie.description || "",
+        status: movie.current_episode?.toLowerCase().includes("hoàn tất") ? "completed" : "ongoing",
+        showtimes: "",
+        trailer_url: "",
+        category: categories,
+        country: countries,
+        actor: actors,
+        director: directors,
+        episodes: [],
+      },
+      episodes,
+    };
+  }
+  
+  return data;
+}
+
+// Helper to create slug from name
+function createSlugFromName(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
 }
 
 // Fetch movie by slug from Supabase, fallback to external API if not found
@@ -119,10 +272,16 @@ export async function fetchMovieDetail(slug: string): Promise<MovieDetailRespons
   if (!movie) {
     console.log(`Movie "${slug}" not found in local DB, fetching from external API...`);
     try {
-      return await fetchMovieDetailFromAPI(slug);
+      // Try phimapi first
+      return await fetchMovieDetailFromAPI(slug, "phimapi");
     } catch (apiError) {
-      console.error("Failed to fetch from external API:", apiError);
-      throw new Error("Failed to fetch movie detail");
+      console.log("PhimAPI failed, trying NguonC...");
+      try {
+        return await fetchMovieDetailFromAPI(slug, "nguonc");
+      } catch (nguoncError) {
+        console.error("Failed to fetch from all external APIs:", nguoncError);
+        throw new Error("Failed to fetch movie detail");
+      }
     }
   }
 
@@ -221,28 +380,28 @@ export async function fetchMoviesByType(
   if (options?.year) params.append("year", options.year.toString());
   if (options?.limit) params.append("limit", options.limit.toString());
 
-  const response = await fetch(`${API_BASE_URL}/v1/api/danh-sach/${type}?${params}`);
+  const response = await fetch(`${API_SOURCES.phimapi.base}/v1/api/danh-sach/${type}?${params}`);
   if (!response.ok) throw new Error("Failed to fetch movies");
   return response.json();
 }
 
 // Search movies
 export async function searchMovies(keyword: string, page: number = 1): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
+  const response = await fetch(`${API_SOURCES.phimapi.base}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
   if (!response.ok) throw new Error("Failed to search movies");
   return response.json();
 }
 
 // Fetch categories
 export async function fetchCategories(): Promise<Category[]> {
-  const response = await fetch(`${API_BASE_URL}/the-loai`);
+  const response = await fetch(`${API_SOURCES.phimapi.base}/the-loai`);
   if (!response.ok) throw new Error("Failed to fetch categories");
   return response.json();
 }
 
 // Fetch countries
 export async function fetchCountries(): Promise<Country[]> {
-  const response = await fetch(`${API_BASE_URL}/quoc-gia`);
+  const response = await fetch(`${API_SOURCES.phimapi.base}/quoc-gia`);
   if (!response.ok) throw new Error("Failed to fetch countries");
   return response.json();
 }
