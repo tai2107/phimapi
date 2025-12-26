@@ -230,9 +230,33 @@ export const SocialBar = ({ page = "all" }: { page?: string }) => {
   );
 };
 
+// Helper to check if content is a script tag
+const isScriptContent = (content: string): boolean => {
+  return content.trim().toLowerCase().startsWith("<script");
+};
+
+// Helper to inject script content into the page
+const injectScript = (content: string): void => {
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = content;
+  
+  const scripts = tempDiv.querySelectorAll("script");
+  scripts.forEach(script => {
+    const newScript = document.createElement("script");
+    if (script.src) {
+      newScript.src = script.src;
+      newScript.async = true;
+    } else {
+      newScript.textContent = script.textContent;
+    }
+    document.body.appendChild(newScript);
+  });
+};
+
 // Pop-under, Popup, Smartlink handler hook
 export const usePopupAds = (page: string = "all") => {
   const hasTriggered = useRef(false);
+  const scriptsInjected = useRef(false);
 
   const { data: popupAds } = useQuery({
     queryKey: ["popup-ads", page],
@@ -257,8 +281,42 @@ export const usePopupAds = (page: string = "all") => {
     },
   });
 
+  // Inject script-based popunder ads immediately (they handle their own triggers)
+  useEffect(() => {
+    if (!popupAds || popupAds.length === 0 || scriptsInjected.current) return;
+
+    const scriptAds = popupAds.filter(ad => 
+      (ad.ad_type === "popunder" || ad.ad_type === "popup") && 
+      isScriptContent(ad.content)
+    );
+
+    if (scriptAds.length > 0) {
+      // Check cooldown for script-based ads too
+      const lastShown = localStorage.getItem("popup_script_last_shown");
+      const now = Date.now();
+      const cooldown = 30 * 60 * 1000; // 30 minutes
+
+      if (lastShown && now - parseInt(lastShown) < cooldown) {
+        return;
+      }
+
+      scriptsInjected.current = true;
+      localStorage.setItem("popup_script_last_shown", now.toString());
+
+      scriptAds.forEach(ad => {
+        console.log(`Injecting ${ad.ad_type} script:`, ad.name);
+        injectScript(ad.content);
+      });
+    }
+  }, [popupAds]);
+
   const triggerPopups = useCallback(() => {
     if (!popupAds || popupAds.length === 0 || hasTriggered.current) return;
+
+    // Only trigger URL-based popups (scripts are already injected and handle themselves)
+    const urlAds = popupAds.filter(ad => !isScriptContent(ad.content));
+    
+    if (urlAds.length === 0) return;
 
     // Check cooldown
     const lastShown = localStorage.getItem("popup_ads_last_shown");
@@ -272,7 +330,7 @@ export const usePopupAds = (page: string = "all") => {
     hasTriggered.current = true;
     localStorage.setItem("popup_ads_last_shown", now.toString());
 
-    popupAds.forEach(ad => {
+    urlAds.forEach(ad => {
       try {
         if (ad.ad_type === "popup") {
           // Popup - opens in front
@@ -306,11 +364,14 @@ export const usePopupAds = (page: string = "all") => {
   useEffect(() => {
     if (!popupAds || popupAds.length === 0) return;
 
+    // Only add click listener for URL-based ads
+    const urlAds = popupAds.filter(ad => !isScriptContent(ad.content));
+    if (urlAds.length === 0) return;
+
     const handleClick = () => {
       triggerPopups();
     };
 
-    // Add click listener only once
     document.addEventListener("click", handleClick, { once: true });
 
     return () => {
