@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdvertisementProps {
-  position: "header" | "footer" | "sidebar" | "player";
+  position: "header" | "footer" | "sidebar" | "player" | "native" | "socialbar";
   page?: string;
+  className?: string;
 }
 
 interface Ad {
@@ -20,7 +21,14 @@ interface Ad {
   end_date: string | null;
 }
 
-export const Advertisement = ({ position, page = "all" }: AdvertisementProps) => {
+// Check if ad should display on current page
+const shouldDisplayOnPage = (adPages: string[] | null, currentPage: string): boolean => {
+  if (!adPages || adPages.length === 0) return true;
+  if (adPages.includes("all")) return true;
+  return adPages.includes(currentPage);
+};
+
+export const Advertisement = ({ position, page = "all", className = "" }: AdvertisementProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: ads } = useQuery({
@@ -34,16 +42,21 @@ export const Advertisement = ({ position, page = "all" }: AdvertisementProps) =>
         .eq("position", position)
         .eq("is_active", true)
         .eq("ad_type", "banner")
-        .or(`start_date.is.null,start_date.lte.${now}`)
-        .or(`end_date.is.null,end_date.gte.${now}`)
         .order("display_order", { ascending: true });
       
       if (error) throw error;
       
-      // Filter by page
-      return (data as Ad[]).filter(ad => 
-        ad.pages?.includes("all") || ad.pages?.includes(page)
-      );
+      // Filter by page and date
+      return (data as Ad[]).filter(ad => {
+        // Check page filter
+        if (!shouldDisplayOnPage(ad.pages, page)) return false;
+        
+        // Check date range
+        if (ad.start_date && new Date(ad.start_date) > new Date(now)) return false;
+        if (ad.end_date && new Date(ad.end_date) < new Date(now)) return false;
+        
+        return true;
+      });
     },
   });
 
@@ -54,6 +67,7 @@ export const Advertisement = ({ position, page = "all" }: AdvertisementProps) =>
       
       ads.forEach(ad => {
         const wrapper = document.createElement("div");
+        wrapper.className = "advertisement-item";
         wrapper.innerHTML = ad.content;
         
         // Execute scripts
@@ -62,9 +76,12 @@ export const Advertisement = ({ position, page = "all" }: AdvertisementProps) =>
           const newScript = document.createElement("script");
           if (script.src) {
             newScript.src = script.src;
+            newScript.async = true;
           } else {
             newScript.textContent = script.textContent;
           }
+          // Remove the original script and append the new one
+          script.remove();
           document.body.appendChild(newScript);
         });
         
@@ -78,62 +95,226 @@ export const Advertisement = ({ position, page = "all" }: AdvertisementProps) =>
   return (
     <div 
       ref={containerRef}
-      className="advertisement-container"
+      className={`advertisement-container flex justify-center items-center w-full ${className}`}
       data-position={position}
     />
   );
 };
 
-// Pop-under and Popup handler
-export const usePopupAds = (page: string = "all") => {
-  useEffect(() => {
-    const fetchPopupAds = async () => {
+// Native Ads Component
+export const NativeAd = ({ page = "all" }: { page?: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { data: ads } = useQuery({
+    queryKey: ["advertisements-native", page],
+    queryFn: async () => {
       const now = new Date().toISOString();
       
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("advertisements")
         .select("*")
-        .in("ad_type", ["popup", "popunder"])
+        .eq("ad_type", "native")
         .eq("is_active", true)
-        .or(`start_date.is.null,start_date.lte.${now}`)
-        .or(`end_date.is.null,end_date.gte.${now}`)
         .order("display_order", { ascending: true });
       
-      if (!data) return;
+      if (error) throw error;
       
-      const ads = (data as Ad[]).filter(ad => 
-        ad.pages?.includes("all") || ad.pages?.includes(page)
-      );
+      return (data as Ad[]).filter(ad => {
+        if (!shouldDisplayOnPage(ad.pages, page)) return false;
+        if (ad.start_date && new Date(ad.start_date) > new Date(now)) return false;
+        if (ad.end_date && new Date(ad.end_date) < new Date(now)) return false;
+        return true;
+      });
+    },
+  });
 
-      // Handle popup ads on first click
-      const handleClick = () => {
-        ads.forEach(ad => {
-          if (ad.ad_type === "popup") {
-            window.open(ad.content, "_blank", "width=800,height=600");
-          } else if (ad.ad_type === "popunder") {
-            const popup = window.open(ad.content, "_blank");
-            if (popup) {
-              popup.blur();
-              window.focus();
-            }
-          }
-        });
-        document.removeEventListener("click", handleClick);
-      };
-
-      if (ads.length > 0) {
-        // Store last shown time in localStorage to avoid spamming
-        const lastShown = localStorage.getItem("popup_ads_last_shown");
-        const now = Date.now();
-        const cooldown = 30 * 60 * 1000; // 30 minutes
+  useEffect(() => {
+    if (containerRef.current && ads && ads.length > 0) {
+      containerRef.current.innerHTML = "";
+      
+      ads.forEach(ad => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "native-ad-item";
+        wrapper.innerHTML = ad.content;
         
-        if (!lastShown || now - parseInt(lastShown) > cooldown) {
-          document.addEventListener("click", handleClick, { once: true });
-          localStorage.setItem("popup_ads_last_shown", now.toString());
+        const scripts = wrapper.querySelectorAll("script");
+        scripts.forEach(script => {
+          const newScript = document.createElement("script");
+          if (script.src) {
+            newScript.src = script.src;
+            newScript.async = true;
+          } else {
+            newScript.textContent = script.textContent;
+          }
+          script.remove();
+          document.body.appendChild(newScript);
+        });
+        
+        containerRef.current?.appendChild(wrapper);
+      });
+    }
+  }, [ads]);
+
+  if (!ads || ads.length === 0) return null;
+
+  return (
+    <div 
+      ref={containerRef}
+      className="native-ad-container my-4"
+      data-ad-type="native"
+    />
+  );
+};
+
+// Social Bar Component
+export const SocialBar = ({ page = "all" }: { page?: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { data: ads } = useQuery({
+    queryKey: ["advertisements-socialbar", page],
+    queryFn: async () => {
+      const now = new Date().toISOString();
+      
+      const { data, error } = await supabase
+        .from("advertisements")
+        .select("*")
+        .eq("ad_type", "socialbar")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+      
+      if (error) throw error;
+      
+      return (data as Ad[]).filter(ad => {
+        if (!shouldDisplayOnPage(ad.pages, page)) return false;
+        if (ad.start_date && new Date(ad.start_date) > new Date(now)) return false;
+        if (ad.end_date && new Date(ad.end_date) < new Date(now)) return false;
+        return true;
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (containerRef.current && ads && ads.length > 0) {
+      containerRef.current.innerHTML = "";
+      
+      ads.forEach(ad => {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = ad.content;
+        
+        const scripts = wrapper.querySelectorAll("script");
+        scripts.forEach(script => {
+          const newScript = document.createElement("script");
+          if (script.src) {
+            newScript.src = script.src;
+            newScript.async = true;
+          } else {
+            newScript.textContent = script.textContent;
+          }
+          script.remove();
+          document.body.appendChild(newScript);
+        });
+        
+        containerRef.current?.appendChild(wrapper);
+      });
+    }
+  }, [ads]);
+
+  if (!ads || ads.length === 0) return null;
+
+  return (
+    <div 
+      ref={containerRef}
+      className="social-bar-container fixed bottom-0 left-0 right-0 z-[100]"
+      data-ad-type="socialbar"
+    />
+  );
+};
+
+// Pop-under, Popup, Smartlink handler hook
+export const usePopupAds = (page: string = "all") => {
+  const hasTriggered = useRef(false);
+
+  const { data: popupAds } = useQuery({
+    queryKey: ["popup-ads", page],
+    queryFn: async () => {
+      const now = new Date().toISOString();
+      
+      const { data, error } = await supabase
+        .from("advertisements")
+        .select("*")
+        .in("ad_type", ["popup", "popunder", "smartlink"])
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+      
+      if (error) throw error;
+      
+      return (data as Ad[]).filter(ad => {
+        if (!shouldDisplayOnPage(ad.pages, page)) return false;
+        if (ad.start_date && new Date(ad.start_date) > new Date(now)) return false;
+        if (ad.end_date && new Date(ad.end_date) < new Date(now)) return false;
+        return true;
+      });
+    },
+  });
+
+  const triggerPopups = useCallback(() => {
+    if (!popupAds || popupAds.length === 0 || hasTriggered.current) return;
+
+    // Check cooldown
+    const lastShown = localStorage.getItem("popup_ads_last_shown");
+    const now = Date.now();
+    const cooldown = 30 * 60 * 1000; // 30 minutes
+
+    if (lastShown && now - parseInt(lastShown) < cooldown) {
+      return;
+    }
+
+    hasTriggered.current = true;
+    localStorage.setItem("popup_ads_last_shown", now.toString());
+
+    popupAds.forEach(ad => {
+      try {
+        if (ad.ad_type === "popup") {
+          // Popup - opens in front
+          const popup = window.open(
+            ad.content, 
+            "_blank", 
+            "width=800,height=600,scrollbars=yes,resizable=yes"
+          );
+          if (popup) {
+            popup.focus();
+          }
+        } else if (ad.ad_type === "popunder") {
+          // Pop-under - opens behind
+          const popup = window.open(ad.content, "_blank");
+          if (popup) {
+            popup.blur();
+            window.focus();
+          }
+        } else if (ad.ad_type === "smartlink") {
+          // Smartlink - redirect with tracking
+          if (ad.content.startsWith("http")) {
+            window.open(ad.content, "_blank");
+          }
         }
+      } catch (e) {
+        console.warn("Popup blocked by browser", e);
       }
+    });
+  }, [popupAds]);
+
+  useEffect(() => {
+    if (!popupAds || popupAds.length === 0) return;
+
+    const handleClick = () => {
+      triggerPopups();
     };
 
-    fetchPopupAds();
-  }, [page]);
+    // Add click listener only once
+    document.addEventListener("click", handleClick, { once: true });
+
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, [popupAds, triggerPopups]);
 };
