@@ -33,9 +33,12 @@ interface Ad {
 }
 
 const AD_TYPES = [
-  { value: "banner", label: "Banner" },
-  { value: "popup", label: "Popup Redirect" },
-  { value: "popunder", label: "Pop-under" },
+  { value: "banner", label: "Banner", description: "Hiển thị banner quảng cáo (HTML/Script/Iframe)" },
+  { value: "popup", label: "Popup Redirect", description: "Popup mở phía trước khi click" },
+  { value: "popunder", label: "Popunder", description: "Popup mở phía sau khi click" },
+  { value: "native", label: "Native Ads", description: "Quảng cáo tự nhiên trong nội dung" },
+  { value: "smartlink", label: "Smartlink", description: "Link thông minh tự động chuyển hướng" },
+  { value: "socialbar", label: "Social Bar", description: "Thanh quảng cáo cố định cuối trang" },
 ];
 
 const POSITIONS = [
@@ -43,6 +46,7 @@ const POSITIONS = [
   { value: "footer", label: "Footer" },
   { value: "sidebar", label: "Sidebar" },
   { value: "player", label: "Player" },
+  { value: "content", label: "Trong nội dung" },
 ];
 
 const PAGES = [
@@ -52,6 +56,9 @@ const PAGES = [
   { value: "tv", label: "Trang TV" },
   { value: "search", label: "Trang tìm kiếm" },
 ];
+
+// Ad types that need position selection
+const POSITION_REQUIRED_TYPES = ["banner"];
 
 export default function AdsManagement() {
   const queryClient = useQueryClient();
@@ -198,7 +205,7 @@ export default function AdsManagement() {
                 <Megaphone className="h-6 w-6 text-primary" />
                 <div>
                   <h1 className="text-xl font-bold">Quản lý Quảng cáo</h1>
-                  <p className="text-sm text-muted-foreground">Quản lý banner, popup và pop-under</p>
+                  <p className="text-sm text-muted-foreground">Quản lý banner, popup, popunder, native, smartlink và social bar</p>
                 </div>
               </div>
               <div className="ml-auto">
@@ -248,43 +255,52 @@ export default function AdsManagement() {
                             <SelectContent>
                               {AD_TYPES.map((type) => (
                                 <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
+                                  <div className="flex flex-col">
+                                    <span>{type.label}</span>
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          <p className="text-xs text-muted-foreground">
+                            {AD_TYPES.find(t => t.value === formData.ad_type)?.description}
+                          </p>
                         </div>
-                        <div className="space-y-2">
-                          <Label>Vị trí</Label>
-                          <Select
-                            value={formData.position}
-                            onValueChange={(value) => setFormData({ ...formData, position: value })}
-                            disabled={formData.ad_type !== "banner"}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {POSITIONS.map((pos) => (
-                                <SelectItem key={pos.value} value={pos.value}>
-                                  {pos.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {POSITION_REQUIRED_TYPES.includes(formData.ad_type) && (
+                          <div className="space-y-2">
+                            <Label>Vị trí</Label>
+                            <Select
+                              value={formData.position}
+                              onValueChange={(value) => setFormData({ ...formData, position: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {POSITIONS.map((pos) => (
+                                  <SelectItem key={pos.value} value={pos.value}>
+                                    {pos.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2">
                         <Label>
-                          {formData.ad_type === "banner" ? "Mã HTML/Script" : "URL Redirect"}
+                          {formData.ad_type === "banner" || formData.ad_type === "native" || formData.ad_type === "socialbar"
+                            ? "Mã HTML/Script" 
+                            : "URL Redirect"}
                         </Label>
                         <Textarea
                           value={formData.content}
                           onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                          placeholder={formData.ad_type === "banner" 
-                            ? "<script>...</script> hoặc <iframe>...</iframe>"
-                            : "https://example.com/redirect-url"
+                          placeholder={
+                            formData.ad_type === "banner" || formData.ad_type === "native" || formData.ad_type === "socialbar"
+                              ? "<script>...</script> hoặc <iframe>...</iframe>"
+                              : "https://example.com/redirect-url"
                           }
                           className="min-h-[120px] font-mono text-sm"
                         />
@@ -381,7 +397,9 @@ export default function AdsManagement() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {POSITIONS.find(p => p.value === ad.position)?.label}
+                            {POSITION_REQUIRED_TYPES.includes(ad.ad_type) 
+                              ? POSITIONS.find(p => p.value === ad.position)?.label 
+                              : "-"}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
